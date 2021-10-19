@@ -37,7 +37,7 @@ LDFLAGS += -lm -lrt -lpthread -lesp -ltest -lcontig -lutils
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)$(LD)
 
-all: $(OBJS) $(EXES) $(EXE) $(BINS) $(BIN)
+all: $(EXTRA_OBJS) $(OBJS) $(EXES) $(EXE) $(BINS) $(BIN)
 
 ifneq ($(APPNAME),)
 $(BUILD_PATH)/%.o: %.c $(HEADERS)

@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 2;
+    const unsigned key_batch = 12;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 
     // FILE* fp = fopen("/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_vivado/hw/tb/raw_values.txt", "r");
     // FILE* fp = fopen("raw_values.txt", "r");
-    const int file_length = key_length*key_batch;//78736896;
+    const int file_length = key_length*(key_batch+1);//78736896;
     // std::ifstream inFile("raw_values.txt");
     float val_arr[file_length];
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     if (inFile.is_open()){
         for (int i = 0; i < file_length; i++) {
             inFile >> val_arr[i];
-            std::cout << val_arr[i] << " ";
+            // std::cout << val_arr[i] << " ";
         }
         std::cout << std::endl;
 
@@ -106,13 +106,14 @@ int main(int argc, char **argv) {
     // word_t output_arr[10] = { 1, 1, 1, 1, 1, 0, 0, 1, 1, 0 };
 
     word_t output_arr[10] = {1, 1, 1, 0, 1, 0, 0, 0, 0, 0};
+    unsigned key_offset = 0;
 
     // Prepare input data
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++)
             // if(i * in_words_adj + j < 10){
-            if(i * in_words_adj + j != 10)
-                inbuff[i * in_words_adj + j] = (word_t) val_arr[i * in_words_adj + j];
+            if((i * in_words_adj + j != 10) && (i * in_words_adj + j != 20))
+                inbuff[i * in_words_adj + j] = (word_t) val_arr[i * in_words_adj + j + key_offset];
             else
                 inbuff[i * in_words_adj + j] = 1000;
             // }
@@ -126,13 +127,14 @@ int main(int argc, char **argv) {
 
     float Rs = R_f * std_f;
     unsigned result;
+    unsigned added = 0;
 
     // Set golden output
-    for(unsigned i = 0; i < key_batch; i++)
+    for(unsigned i = 0; i < key_batch; i++){
         for(unsigned j = 0; j < key_length; j++)
         {
-            float val = val_arr[i * in_words_adj + j];
-            if(i * in_words_adj + j == 10)
+            float val = val_arr[i * in_words_adj + j + key_offset];
+            if((i * in_words_adj + j == 10) || (i * in_words_adj + j == 20))
                 val = 1000;
             bool filter = (fabs((float)val - avg_f) >= Rs);
             if(!filter){
@@ -140,9 +142,14 @@ int main(int argc, char **argv) {
                 result = result % 2;
                 outbuff_gold[i * out_words_adj + j] = (word_t) result;
             }
-            else
+            else{
                 outbuff_gold[i * out_words_adj + j] = 3;
+                added += 1;
+            }
+
+            // std::cout << "Golden index " << i * out_words_adj + j << " val " << outbuff_gold[i * out_words_adj + j] << std::endl;
         }
+    }
 
 
     // Call the TOP function
@@ -162,25 +169,44 @@ int main(int argc, char **argv) {
 	for(unsigned k = 0; k < VALUES_PER_WORD; k++)
 	    outbuff[i * VALUES_PER_WORD + k] = mem[out_offset + i].word[k];
 
+
+    std::cout << "\n ^*^*^* VALIDATION ^*^*^* \n" << std::endl;
+
     int errors = 0;
     int skip = 0;
+    int key_counter = 1;
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++){
-            word_t val = outbuff[i * out_words_adj + j - skip];
-            word_t gold_val = outbuff_gold[i * out_words_adj + j];
+            unsigned index = i * out_words_adj + j;
+            word_t val = outbuff[index - skip];
+            word_t gold_val = outbuff_gold[index];
             if(gold_val != 3){
-                std::cout << "Calculated value " << val << " Golden value " << outbuff_gold[i * out_words_adj + j] << " for index " << i * out_words_adj + j - skip << std::endl;
-                if (outbuff[i * out_words_adj + j - skip] != outbuff_gold[i * out_words_adj + j])
-                    errors++;
+                if(!(i == key_batch - (ceil((float)skip/key_length)) && (j > skip - 1) )){
+                    std::cout << "Calculated value " << val << " Golden value " << outbuff_gold[index] << " for index " << index - skip << std::endl;
+                    if (outbuff[index - skip] != outbuff_gold[index]){
+                        errors++;
+                        std::cout << "ERROR" << std::endl;
+                    }
+                }
             }
-            else
+            else{
+                std::cout << "SKIPPING" << std::endl;
                 skip += 1;
+            }
+
+            if((index - skip + 1) % key_length == 0 && index != 0){
+                std::cout << "\n----------KEY " << key_counter << " DONE----------\n" << std::endl;
+                key_counter++;
+            }
+
         }
 
     if (errors)
 	std::cout << "Test FAILED with " << errors << " errors." << std::endl;
-    else
+    else{
+	std::cout << "Keys generated: " << key_counter-1 << std::endl;
 	std::cout << "Test PASSED." << std::endl;
+    }
 
     // Free memory
 

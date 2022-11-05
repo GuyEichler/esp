@@ -7,5 +7,6 @@
     <param name="std" desc="std" />
     <param name="key_length" desc="key_length" />
     <param name="avg" desc="avg" />
+    <param name="key_num" desc="key_num" />
   </accelerator>
 </sld>

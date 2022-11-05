@@ -23,7 +23,8 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 12;
+    const unsigned key_batch = 20;
+    const unsigned key_num = 15;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -48,9 +49,14 @@ int main(int argc, char **argv) {
     if (inFile.is_open()){
         for (int i = 0; i < file_length; i++) {
             inFile >> val_arr[i];
-            // std::cout << val_arr[i] << " ";
+            // std::cout.precision(19);
+            // if(i == 0)
+            //     std::cout << "[ ";
+            // std::cout << val_arr[i] << ", ";
+            // if(i == file_length - 1)
+            //     std::cout << "  ]";
         }
-        std::cout << std::endl;
+        // std::cout << std::endl;
 
         inFile.close();
     }
@@ -155,12 +161,13 @@ int main(int argc, char **argv) {
     // Call the TOP function
     top(mem, mem,
         /* <<--args-->> */
-	 	 avg,
-	 	 key_length,
-	 	 std,
-                 R,
-	 	 L,
-	 	 key_batch,
+        avg,
+        key_length,
+        std,
+        R,
+        L,
+        key_batch,
+        key_num,
         load, store);
 
     // Validate
@@ -174,9 +181,10 @@ int main(int argc, char **argv) {
 
     int errors = 0;
     int skip = 0;
-    int key_counter = 1;
+    int key_counter = 0;
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++){
+            if(key_counter == key_num) break;
             unsigned index = i * out_words_adj + j;
             word_t val = outbuff[index - skip];
             word_t gold_val = outbuff_gold[index];
@@ -195,16 +203,15 @@ int main(int argc, char **argv) {
             }
 
             if((index - skip + 1) % key_length == 0 && index != 0){
-                std::cout << "\n----------KEY " << key_counter << " DONE----------\n" << std::endl;
                 key_counter++;
+                std::cout << "\n----------KEY " << key_counter << " DONE----------\n" << std::endl;
             }
-
         }
 
     if (errors)
 	std::cout << "Test FAILED with " << errors << " errors." << std::endl;
     else{
-	std::cout << "Keys generated: " << key_counter-1 << std::endl;
+	std::cout << "Keys generated: " << key_counter << std::endl;
 	std::cout << "Test PASSED." << std::endl;
     }
 

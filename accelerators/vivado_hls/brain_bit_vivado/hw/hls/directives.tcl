@@ -9,6 +9,7 @@ set_directive_interface -mode ap_none "top" conf_info_std
 set_directive_interface -mode ap_none "top" conf_info_R
 set_directive_interface -mode ap_none "top" conf_info_L
 set_directive_interface -mode ap_none "top" conf_info_key_batch
+set_directive_interface -mode ap_none "top" conf_info_key_num
 
 # Insert here any custom directive
 

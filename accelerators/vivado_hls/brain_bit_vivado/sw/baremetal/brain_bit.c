@@ -9,8 +9,13 @@
 #include <esp_accelerator.h>
 #include <esp_probe.h>
 #include <fixed_point.h>
+#include <math.h>
+#include <stdbool.h>
 
-typedef int32_t token_t;
+#include "input.h"
+
+/* typedef int32_t token_t; */
+typedef float token_t;
 
 static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 {
@@ -22,12 +27,14 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 #define DEV_NAME "sld,brain_bit_vivado"
 
 /* <<--params-->> */
-const int32_t avg = 1;
+const float avg = 3.0677295382679177;
 const int32_t key_length = 128;
-const int32_t std = 1;
-const int32_t R = 1;
-const int32_t L = 1;
-const int32_t key_batch = 1;
+const float std = 38.626628825256695;
+const float R = 1.5;
+const int32_t L = 1500;
+const int32_t key_batch = 5;
+const int32_t key_num = 3;
+const float Rs = R * std;
 
 static unsigned in_words_adj;
 static unsigned out_words_adj;
@@ -47,6 +54,7 @@ static unsigned mem_size;
 
 /* User defined registers */
 /* <<--regs-->> */
+#define BRAIN_BIT_KEY_NUM_REG 0x58
 #define BRAIN_BIT_AVG_REG 0x54
 #define BRAIN_BIT_KEY_LENGTH_REG 0x50
 #define BRAIN_BIT_STD_REG 0x4c
@@ -60,11 +68,36 @@ static int validate_buf(token_t *out, token_t *gold)
 	int i;
 	int j;
 	unsigned errors = 0;
+	int skip = 0;
+	int key_counter = 0;
 
 	for (i = 0; i < key_batch; i++)
-		for (j = 0; j < key_length; j++)
-			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
-				errors++;
+		for (j = 0; j < key_length; j++){
+			if(key_counter == key_num) break;
+			unsigned index = i * out_words_adj + j;
+			token_t val = out[index - skip];
+			token_t gold_val = gold[index];
+			unsigned reduce = (ceil((float)skip/key_length));
+			if(gold_val != 3){
+				if(!(i == key_batch - reduce && (j > skip - 1) )){
+					printf("Calculated value %f Golden value %f for index %d \n",
+						val, gold_val, (index-skip));
+					if (gold_val != val){
+						errors++;
+						printf("ERROR\n");
+					}
+				}
+			}
+			else{
+				printf("SKIPPING\n");
+				skip += 1;
+			}
+
+			if((index - skip + 1) % key_length == 0 && index != 0){
+				key_counter++;
+				printf("\n----------KEY %d DONE----------\n", key_counter);
+			}
+		}
 
 	return errors;
 }
@@ -77,11 +110,21 @@ static void init_buf (token_t *in, token_t * gold)
 
 	for (i = 0; i < key_batch; i++)
 		for (j = 0; j < key_length; j++)
-			in[i * in_words_adj + j] = (token_t) j;
+			in[i * in_words_adj + j] = (token_t) val_arr[i * in_words_adj + j];
 
-	for (i = 0; i < key_batch; i++)
-		for (j = 0; j < key_length; j++)
-			gold[i * out_words_adj + j] = (token_t) j;
+        for (i = 0; i < key_batch; i++)
+		for (j = 0; j < key_length; j++){
+			float val = (token_t) val_arr[i * in_words_adj + j];
+                        bool filter = (fabs((float)val - avg) >= Rs);
+			if(!filter){
+				int32_t result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
+				result = result % 2;
+				gold[i * out_words_adj + j] = (token_t) result;
+			}
+			else{
+				gold[i * out_words_adj + j] = 3;
+			}
+		}
 }
 
 
@@ -189,6 +232,7 @@ int main(int argc, char * argv[])
 		iowrite32(dev, BRAIN_BIT_R_REG, R);
 		iowrite32(dev, BRAIN_BIT_L_REG, L);
 		iowrite32(dev, BRAIN_BIT_KEY_BATCH_REG, key_batch);
+		iowrite32(dev, BRAIN_BIT_KEY_NUM_REG, key_num);
 
 			// Flush (customize coherence model here)
 			esp_flush(coherence);

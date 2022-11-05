@@ -237,6 +237,7 @@ void top(dma_word_t *out, dma_word_t *in1,
 	 const word_t conf_info_R,
 	 const unsigned conf_info_L,
 	 const unsigned conf_info_key_batch,
+	 const unsigned conf_info_key_num,
 	 dma_info_t &load_ctrl, dma_info_t &store_ctrl)
 {
 
@@ -247,12 +248,15 @@ void top(dma_word_t *out, dma_word_t *in1,
 	 const word_t R = conf_info_R;
 	 const unsigned L = conf_info_L;
 	 const unsigned key_batch = conf_info_key_batch;
+	 const unsigned key_num = conf_info_key_num;
 
          static bool is_output_ready = false;
          static bool is_output_sent = false;
          static bool is_load_finished = false;
          static bool load_values = true;
-         unsigned add = 0;
+         static unsigned add = 0;
+         // static bool first = true;
+         static unsigned keys_done = 0;
          // unsigned output_idx = 0;
 
     // Batching
@@ -305,8 +309,32 @@ batching:
                 is_output_sent,
                   store_ctrl, c, b);
 
-            if(!load_values) add = add + 1;
+            if(!load_values){
+                add = add + 1;
 
+#ifndef __SYNTHESIS__
+               std::cout << "TOP : Adding another batch. Total is " << key_batch + add << std::endl;
+                   // " b-add is "<< b-add << std::endl;
+#endif
+
+            }
+
+            if(is_output_sent){
+                keys_done = keys_done + 1;
+
+#ifndef __SYNTHESIS__
+                std::cout << "TOP : Keys generated " << keys_done << std::endl;
+#endif
+
+                if(keys_done == key_num){
+                    b = key_batch + add - 1;
+
+#ifndef __SYNTHESIS__
+               std::cout << "TOP : Enough keys were generated " << std::endl;
+#endif
+
+                }
+            }
         }
     }
 }

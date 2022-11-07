@@ -47,6 +47,9 @@ static unsigned in_size;
 static unsigned out_size;
 static unsigned out_offset;
 static unsigned mem_size;
+/* static token_t avg_fixed; */
+/* static token_t std_fixed; */
+/* static token_t R_fixed; */
 
 /* Size of the contiguous chunks for scatter/gather */
 #define CHUNK_SHIFT 20
@@ -83,7 +86,7 @@ static int validate_buf(token_t *out, token_t *gold)
 			unsigned reduce = (ceil((float)skip/key_length));
 			if(gold_val != 3){
 				if(!(i == key_batch - reduce && (j > skip - 1) )){
-					printf("Calculated value %f Golden value %f for index %d \n",
+					printf("Calculated value %d Golden value %d for index %d \n",
 						val, gold_val, (index-skip));
 					if (gold_val != val){
 						errors++;
@@ -112,12 +115,15 @@ static void init_buf (token_t *in, token_t * gold)
 	int j;
 
 	for (i = 0; i < key_batch; i++)
-		for (j = 0; j < key_length; j++)
-			in[i * in_words_adj + j] = (token_t) val_arr[i * in_words_adj + j];
+		for (j = 0; j < key_length; j++){
+                        float val = val_arr[i * in_words_adj + j];
+                        //in[i * in_words_adj + j] = (token_t) float_to_fixed32(val, 12);
+                        in[i * in_words_adj + j] = (token_t) val;
+                }
 
         for (i = 0; i < key_batch; i++)
 		for (j = 0; j < key_length; j++){
-			float val = (token_t) val_arr[i * in_words_adj + j];
+			float val = val_arr[i * in_words_adj + j];
                         bool filter = (fabs((float)val - avg) >= Rs);
 			if(!filter){
 				int32_t result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
@@ -159,6 +165,9 @@ int main(int argc, char * argv[])
 	out_offset  = in_len;
 	mem_size = (out_offset * sizeof(token_t)) + out_size;
 
+        avg_fixed = float_to_fixed32(avg, 12);
+        std_fixed = float_to_fixed32(std, 12);
+        R_fixed = float_to_fixed32(R, 12);
 
 	// Search for the device
 	printf("Scanning device tree... \n");
@@ -230,9 +239,12 @@ int main(int argc, char * argv[])
 			// Pass accelerator-specific configuration parameters
 			/* <<--regs-config-->> */
 			iowrite32(dev, BRAIN_BIT_AVG_REG, *avg_ptr);
+                        /* iowrite32(dev, BRAIN_BIT_AVG_REG, avg_fixed); */
 			iowrite32(dev, BRAIN_BIT_KEY_LENGTH_REG, key_length);
-			iowrite32(dev, BRAIN_BIT_STD_REG, *std_ptr);
-			iowrite32(dev, BRAIN_BIT_R_REG, *R_ptr);
+                        iowrite32(dev, BRAIN_BIT_STD_REG, *std_ptr);
+			/* iowrite32(dev, BRAIN_BIT_STD_REG, std_fixed); */
+                        iowrite32(dev, BRAIN_BIT_R_REG, *R_ptr);
+			/* iowrite32(dev, BRAIN_BIT_R_REG, R_fixed); */
 			iowrite32(dev, BRAIN_BIT_L_REG, L);
 			iowrite32(dev, BRAIN_BIT_KEY_BATCH_REG, key_batch);
 			iowrite32(dev, BRAIN_BIT_KEY_NUM_REG, key_num);

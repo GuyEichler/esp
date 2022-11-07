@@ -23,8 +23,8 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 20;
-    const unsigned key_num = 15;
+    const unsigned key_batch = 2;
+    const unsigned key_num = 1;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;

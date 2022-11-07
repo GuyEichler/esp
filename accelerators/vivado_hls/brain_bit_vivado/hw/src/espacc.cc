@@ -14,7 +14,7 @@ void load(word_t _inbuff[SIZE_IN_CHUNK_DATA], dma_word_t *in1,
 	 const word_t R,
 	 const unsigned L,
 	 const unsigned key_batch,
-          bool &is_load_finished,
+          // bool &is_load_finished,
           bool &load_values,
 	  dma_info_t &load_ctrl, int chunk, int batch)
 {
@@ -30,25 +30,27 @@ load_data:
     load_ctrl.length = dma_length;
     load_ctrl.size = SIZE_WORD_T;
 
-    if(batch == key_batch - 1){
-        is_load_finished = true;
+//     if(batch == key_batch - 1){
+//         is_load_finished = true;
 
-#ifndef __SYNTHESIS__
-        std::cout << "LOAD : About to load last batch " << std::endl;
-#endif
+// #ifndef __SYNTHESIS__
+//         std::cout << "LOAD : About to load last batch " << std::endl;
+// #endif
 
-    }
+//     }
 
-    if(load_values){
+    if(!load_values){
+        dma_length = 0;
 
 #ifndef __SYNTHESIS__
         std::cout << "LOAD : Loading new values " << std::endl;
 #endif
 
-        for (unsigned i = 0; i < dma_length; i++) {
-        load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
-                _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
-            }
+    }
+
+    for (unsigned i = 0; i < dma_length; i++) {
+    load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
+            _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
         }
     }
 }
@@ -82,12 +84,18 @@ store_data:
 
     //is_output_sent = false;
 
-    if(is_output_ready){
-        for (unsigned i = 0; i < dma_length; i++) {
-        store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
-                out[dma_index + i].word[j] = _outbuff[i * VALUES_PER_WORD + j];
-            }
+    if(!is_output_ready){
+        dma_length = 0;
+        is_output_sent = false;
+    }
+
+    for (unsigned i = 0; i < dma_length; i++) {
+    store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
+            out[dma_index + i].word[j] = _outbuff[i * VALUES_PER_WORD + j];
         }
+    }
+
+    if(is_output_ready){
         is_output_sent = true;
         index += length;
 
@@ -96,8 +104,7 @@ store_data:
 #endif
 
     }
-    else
-        is_output_sent = false;
+
 }
 
 void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
@@ -126,7 +133,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     static unsigned input_offset = 0;
     unsigned i;
 
-    is_output_ready = false;
+    //is_output_ready = false;
     //load_values = true;
 
 #ifndef __SYNTHESIS__
@@ -260,7 +267,7 @@ void top(dma_word_t *out, dma_word_t *in1,
 
          static bool is_output_ready = false;
          static bool is_output_sent = false;
-         static bool is_load_finished = false;
+         // static bool is_load_finished = false;
          static bool load_values = true;
          static unsigned add = 0;
          // static bool first = true;
@@ -286,8 +293,8 @@ batching:
 	 	 R,
 	 	 L,
 	 	 key_batch,
-                is_load_finished,
-                load_values,
+                // is_load_finished,
+                 load_values,
                  load_ctrl, c, b-add);
 
             compute(_inbuff,

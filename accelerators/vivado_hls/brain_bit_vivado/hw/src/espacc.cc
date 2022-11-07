@@ -80,7 +80,7 @@ store_data:
     store_ctrl.length = dma_length;
     store_ctrl.size = SIZE_WORD_T;
 
-    is_output_sent = false;
+    //is_output_sent = false;
 
     if(is_output_ready){
         for (unsigned i = 0; i < dma_length; i++) {
@@ -96,6 +96,8 @@ store_data:
 #endif
 
     }
+    else
+        is_output_sent = false;
 }
 
 void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
@@ -107,10 +109,11 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 	 const unsigned L,
 	 const unsigned key_batch,
          bool &is_output_ready,
-         bool &is_output_sent,
+         // bool &is_output_sent,
          // unsigned& output_idx,
-         bool &is_load_finished,
+         // bool &is_load_finished,
          bool &load_values,
+         unsigned &add,
          word_t _outbuff[SIZE_OUT_CHUNK_DATA])
 {
 
@@ -124,7 +127,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     unsigned i;
 
     is_output_ready = false;
-    load_values = true;
+    //load_values = true;
 
 #ifndef __SYNTHESIS__
     std::cout << "COMPUTE : Input offset is " << input_offset << std::endl;
@@ -174,14 +177,14 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
             is_output_ready = true;
             output_idx = 0;
         }
-        else if(is_load_finished && i == in_length - 1){
-            // is_output_ready = true;
+//         else if(is_load_finished && i == in_length - 1){
+//             // is_output_ready = true;
 
-#ifndef __SYNTHESIS__
-            std::cout << "COMPUTE : Load was done and signaled to compute " << std::endl;
-#endif
+// #ifndef __SYNTHESIS__
+//             std::cout << "COMPUTE : Load was done and signaled to compute " << std::endl;
+// #endif
 
-        }
+//         }
         else{
             is_output_ready = false;
         }
@@ -219,10 +222,15 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     }
     else{
         load_values = false;
+        add = add + 1;
 
 #ifndef __SYNTHESIS__
         std::cout << "COMPUTE : Load should be blocked " << std::endl;
 #endif
+#ifndef __SYNTHESIS__
+        std::cout << "COMPUTE : Adding another batch. Total is " << key_batch + add << std::endl;
+#endif
+
 
     }
 
@@ -291,10 +299,11 @@ batching:
 	 	 L,
 	 	 key_batch,
                  is_output_ready,
-                 is_output_sent,
-                 is_load_finished,
+                 // is_output_sent,
+                 // is_load_finished,
                  // output_idx,
                  load_values,
+                 add,
                 _outbuff);
 
             store(_outbuff, out,
@@ -309,15 +318,15 @@ batching:
                 is_output_sent,
                   store_ctrl, c, b);
 
-            if(!load_values){
-                add = add + 1;
+//             if(!load_values){
+//                 add = add + 1;
 
-#ifndef __SYNTHESIS__
-               std::cout << "TOP : Adding another batch. Total is " << key_batch + add << std::endl;
-                   // " b-add is "<< b-add << std::endl;
-#endif
+// #ifndef __SYNTHESIS__
+//                std::cout << "TOP : Adding another batch. Total is " << key_batch + add << std::endl;
+//                    // " b-add is "<< b-add << std::endl;
+// #endif
 
-            }
+//             }
 
             if(is_output_sent){
                 keys_done = keys_done + 1;

@@ -99,8 +99,8 @@ if test ! -e ${TARGET_DIR}; then
 fi
 
 # Remove and create temporary folder
-rm -rf $TMP
-mkdir $TMP
+# rm -rf $TMP
+# mkdir $TMP
 cd $TMP
 
 git config --global url.https://github.com/qemu/.insteadOf git://git.qemu-project.org/
@@ -135,7 +135,7 @@ if [ $(noyes "Skip ${src}") == "n" ]; then
 
     git reset --hard ${RISCV_GNU_TOOLCHAIN_SHA}
     git submodule update --init --recursive
-    ./configure --prefix=${TARGET_DIR} --disable-gdb
+    ./configure --prefix=${TARGET_DIR} --disable-gdb --with-cmodel=medany
     cmd="make -j ${NTHREADS}"
     runsudo ${TARGET_DIR} "$cmd"
 

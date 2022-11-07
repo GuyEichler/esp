@@ -28,12 +28,15 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
-const int32_t key_length = 128;
+unsigned* avg_ptr = (unsigned*)&avg;
+const int32_t key_length = 16;
 const float std = 38.626628825256695;
+unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
+unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
-const int32_t key_batch = 5;
-const int32_t key_num = 3;
+const int32_t key_batch = 2;
+const int32_t key_num = 1;
 const float Rs = R * std;
 
 static unsigned in_words_adj;
@@ -226,13 +229,13 @@ int main(int argc, char * argv[])
 
 			// Pass accelerator-specific configuration parameters
 			/* <<--regs-config-->> */
-		iowrite32(dev, BRAIN_BIT_AVG_REG, avg);
-		iowrite32(dev, BRAIN_BIT_KEY_LENGTH_REG, key_length);
-		iowrite32(dev, BRAIN_BIT_STD_REG, std);
-		iowrite32(dev, BRAIN_BIT_R_REG, R);
-		iowrite32(dev, BRAIN_BIT_L_REG, L);
-		iowrite32(dev, BRAIN_BIT_KEY_BATCH_REG, key_batch);
-		iowrite32(dev, BRAIN_BIT_KEY_NUM_REG, key_num);
+			iowrite32(dev, BRAIN_BIT_AVG_REG, *avg_ptr);
+			iowrite32(dev, BRAIN_BIT_KEY_LENGTH_REG, key_length);
+			iowrite32(dev, BRAIN_BIT_STD_REG, *std_ptr);
+			iowrite32(dev, BRAIN_BIT_R_REG, *R_ptr);
+			iowrite32(dev, BRAIN_BIT_L_REG, L);
+			iowrite32(dev, BRAIN_BIT_KEY_BATCH_REG, key_batch);
+			iowrite32(dev, BRAIN_BIT_KEY_NUM_REG, key_num);
 
 			// Flush (customize coherence model here)
 			esp_flush(coherence);

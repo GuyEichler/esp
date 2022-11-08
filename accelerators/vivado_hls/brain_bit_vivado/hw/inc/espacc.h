@@ -79,10 +79,10 @@ typedef struct dma_info {
 
 void top(out_dma_word_t *out, dma_word_t *in1,
 	/* <<--params-->> */
-	 const word_t conf_info_avg,
+	 const float conf_info_avg,
 	 const unsigned conf_info_key_length,
-	 const word_t conf_info_std,
-	 const word_t conf_info_R,
+	 const float conf_info_std,
+	 const float conf_info_R,
 	 const unsigned conf_info_L,
 	 const unsigned conf_info_key_batch,
 	 const unsigned conf_info_key_num,

@@ -7,11 +7,11 @@
 
 // Data type
 
-#define IS_TYPE_FIXED_POINT 0
+#define IS_TYPE_FIXED_POINT 1
 #define FRAC_BITS 20
 #define IS_TYPE_UINT 0
 #define IS_TYPE_INT 0
-#define IS_TYPE_FLOAT 1
+#define IS_TYPE_FLOAT 0
 
 // In/out arrays
 

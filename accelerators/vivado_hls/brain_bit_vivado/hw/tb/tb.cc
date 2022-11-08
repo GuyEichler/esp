@@ -166,10 +166,10 @@ int main(int argc, char **argv) {
     // Call the TOP function
     top(mem_out, mem,
         /* <<--args-->> */
-        avg,
+        avg_f,
         key_length,
-        std,
-        R,
+        std_f,
+        R_f,
         L,
         key_batch,
         key_num,
@@ -254,10 +254,13 @@ int main(int argc, char **argv) {
             }
         }
 
-    if (errors)
-	std::cout << "Test FAILED with " << std::dec << errors << " errors." << std::endl;
+    float total = 100 * (float) errors / (key_length*key_batch);
+
+    if (total > 1)
+	std::cout << "Test FAILED with " << std::dec << total << "% errors." << std::endl;
     else{
 	std::cout << "Keys generated: " << std::dec << key_counter << std::endl;
+	std::cout << "Number of bit errors: " << std::dec << errors << std::endl;
 	std::cout << "Test PASSED." << std::endl;
     }
 

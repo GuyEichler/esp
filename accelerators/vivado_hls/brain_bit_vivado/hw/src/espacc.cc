@@ -24,25 +24,28 @@ load_data:
     const unsigned length = round_up(key_length, VALUES_PER_WORD);
     const unsigned index = length * batch;
 
-    unsigned dma_length = load_values ? length / VALUES_PER_WORD : 0;
+    unsigned dma_length = length / VALUES_PER_WORD;
     unsigned dma_index = index / VALUES_PER_WORD;
 
-    load_ctrl.index = dma_index;
-    load_ctrl.length = dma_length;
-    load_ctrl.size = SIZE_WORD_T;
+    if(load_values){
+
+        load_ctrl.index = dma_index;
+        load_ctrl.length = dma_length;
+        load_ctrl.size = SIZE_WORD_T;
 
 #ifndef __SYNTHESIS__
-    if(!load_values){
+
         std::cout << "LOAD : Loading new values " << std::endl;
-    }
+
 #endif
 
-    for (unsigned i = 0; i < dma_length; i++) {
+        for (unsigned i = 0; i < dma_length; i++) {
 
 #pragma HLS loop_tripcount max=128
 
-    load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
-            _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
+        load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
+                _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
+            }
         }
     }
 }
@@ -58,7 +61,7 @@ void store(out_dma_word_t *out,
            const unsigned key_num,
          bool &is_output_ready,
          unsigned &keys_done,
-	 dma_info_t &store_ctrl, int batch,
+           dma_info_t &store_ctrl, //int batch,
          ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA])
 {
 store_data:
@@ -70,8 +73,10 @@ store_data:
     const unsigned offset = keys_done * length;
     const unsigned index = out_offset + offset;
 
-    unsigned dma_length = is_output_ready ? length / VALUES_PER_WORD : 0;
+    unsigned dma_length = length / VALUES_PER_WORD;
     unsigned dma_index = index / VALUES_PER_WORD;
+
+    if(is_output_ready){
 
     store_ctrl.index = dma_index;
     store_ctrl.length = dma_length;
@@ -94,7 +99,6 @@ store_data:
         }
     }
 
-    if(is_output_ready){
 
 #ifndef __SYNTHESIS__
         std::cout << "STORE : Output was sent " << std::endl;
@@ -121,7 +125,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
             const unsigned key_num,
          bool &is_output_ready,
          bool &load_values,
-         unsigned &add,
+         // unsigned &add,
          ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA])
 {
 
@@ -224,14 +228,14 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     }
     else{
         load_values = false;
-        add = add + 1;
+        // add = add + 1;
 
 #ifndef __SYNTHESIS__
         std::cout << "COMPUTE : Load should be blocked " << std::endl;
 #endif
-#ifndef __SYNTHESIS__
-        std::cout << "COMPUTE : Adding another batch. Total is " << key_batch + add << std::endl;
-#endif
+// #ifndef __SYNTHESIS__
+//         std::cout << "COMPUTE : Adding another batch. Total is " << key_batch + add << std::endl;
+// #endif
 
 
     }
@@ -241,10 +245,10 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 
 void top(out_dma_word_t *out, dma_word_t *in1,
             /* <<--params-->> */
-            const word_t conf_info_avg,
+            const float conf_info_avg,
             const unsigned conf_info_key_length,
-            const word_t conf_info_std,
-            const word_t conf_info_R,
+            const float conf_info_std,
+            const float conf_info_R,
             const unsigned conf_info_L,
             const unsigned conf_info_key_batch,
             const unsigned conf_info_key_num,
@@ -262,19 +266,23 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 
         bool is_output_ready = false;
         bool load_values = true;
-        unsigned add = 0;
+        // unsigned add = 0;
         unsigned keys_done = 0;
 
         //Memories
+        // static word_t _inbuff[SIZE_IN_CHUNK_DATA];
         static word_t _inbuff[SIZE_IN_CHUNK_DATA];
         static ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA];
 
+        unsigned b = 0;
+
         // Batching
     batching:
-    for (unsigned b = 0; b < key_batch + add; b++)
+    // for (unsigned b = 0; b < key_batch + add; b++)
+    while(keys_done != key_num)
     {
 
-#pragma HLS loop_tripcount max=1
+//#pragma HLS loop_tripcount max=1
 
     go:
         load(_inbuff, in1,
@@ -287,7 +295,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             key_batch,
             key_num,
             load_values,
-            load_ctrl, b-add);
+            load_ctrl, b);
 
         compute(_inbuff,
             /* <<--args-->> */
@@ -300,7 +308,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             key_num,
             is_output_ready,
             load_values,
-            add,
+            // add,
             _outbuff_bit);
 
             store(out,
@@ -314,17 +322,17 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             key_num,
             is_output_ready,
             keys_done,
-            store_ctrl, b,
+            store_ctrl, //b,
             _outbuff_bit);
 
-
-        if(keys_done == key_num){
+            if(load_values)
+                b = b + 1;
 
 #ifndef __SYNTHESIS__
+        if(keys_done == key_num){
             std::cout << "TOP : Enough keys were generated " << std::endl;
-#endif
-            break;
-
         }
+#endif
+
     }
 }

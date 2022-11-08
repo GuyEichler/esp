@@ -14,8 +14,8 @@
 
 #include "input.h"
 
-/* typedef int32_t token_t; */
-typedef float token_t;
+typedef int32_t token_t;
+/* typedef float token_t; */
 
 static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 {
@@ -126,8 +126,8 @@ static void init_buf (token_t *in, token_t * gold)
 	for (i = 0; i < key_batch; i++)
 		for (j = 0; j < key_length; j++){
                         float val = val_arr[i * in_words_adj + j];
-                        //in[i * in_words_adj + j] = (token_t) float_to_fixed32(val, 12);
-                        in[i * in_words_adj + j] = (token_t) val;
+                        in[i * in_words_adj + j] = (token_t) float_to_fixed32(val, 12);
+                        //in[i * in_words_adj + j] = (token_t) val;
                 }
 
         for (i = 0; i < key_batch; i++)

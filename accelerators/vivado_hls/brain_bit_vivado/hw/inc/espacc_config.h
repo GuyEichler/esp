@@ -19,4 +19,8 @@
 
 #define SIZE_OUT_CHUNK_DATA 1024
 
+#define SIZE_OUT_BIT_DATA 1024 / DATA_BITWIDTH
+
+#define DATA_BITWIDTH_LOG 5 //log2(32)
+
 #endif

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <bitset>
 
 int main(int argc, char **argv) {
 
@@ -23,8 +24,8 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 2;
-    const unsigned key_num = 1;
+    const unsigned key_batch = 20;
+    const unsigned key_num = 15;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -92,8 +93,10 @@ int main(int argc, char **argv) {
     dma_size = dma_in_size + dma_out_size;
 
     dma_word_t *mem=(dma_word_t*) malloc(dma_size * sizeof(dma_word_t));
+    out_dma_word_t *mem_out=(out_dma_word_t*) malloc(dma_size * sizeof(out_dma_word_t));
     word_t *inbuff=(word_t*) malloc(in_size * sizeof(word_t));
     word_t *outbuff=(word_t*) malloc(out_size * sizeof(word_t));
+    ap_uint<32> *outbuff_bit=(ap_uint<32>*) malloc(out_size * sizeof(word_t));
     word_t *outbuff_gold= (word_t*) malloc(out_size * sizeof(word_t));
     dma_info_t load;
     dma_info_t store;
@@ -158,8 +161,10 @@ int main(int argc, char **argv) {
     }
 
 
+    //out_dma_word_t* mem_out = (out_dma_word_t*)&mem[out_offset];
+
     // Call the TOP function
-    top(mem, mem,
+    top(mem_out, mem,
         /* <<--args-->> */
         avg,
         key_length,
@@ -173,8 +178,11 @@ int main(int argc, char **argv) {
     // Validate
     uint32_t out_offset = dma_in_size;
     for(unsigned i = 0; i < dma_out_size; i++)
-	for(unsigned k = 0; k < VALUES_PER_WORD; k++)
-	    outbuff[i * VALUES_PER_WORD + k] = mem[out_offset + i].word[k];
+	for(unsigned k = 0; k < VALUES_PER_WORD; k++){
+	    // outbuff[i * VALUES_PER_WORD + k] = mem[out_offset + i].word[k];
+	    outbuff_bit[i * VALUES_PER_WORD + k] = mem_out[out_offset + i].word[k];
+            // std::cout << " mem val is " << std::bitset<32>(outbuff_bit[i * VALUES_PER_WORD + k]) << std::endl;
+        }
 
 
     std::cout << "\n ^*^*^* VALIDATION ^*^*^* \n" << std::endl;
@@ -182,16 +190,50 @@ int main(int argc, char **argv) {
     int errors = 0;
     int skip = 0;
     int key_counter = 0;
+
+    // for(unsigned i = 0; i < key_batch; i++)
+    //     for(unsigned j = 0; j < key_length; j++){
+    //         if(key_counter == key_num) break;
+    //         unsigned index = i * out_words_adj + j;
+    //         word_t val = outbuff[index - skip];
+    //         word_t gold_val = outbuff_gold[index];
+    //         if(gold_val != 3){
+    //             if(!(i == key_batch - (ceil((float)skip/key_length)) && (j > skip - 1) )){
+    //                 std::cout << "Calculated value " << val << " Golden value " << outbuff_gold[index] << " for index " << index - skip << std::endl;
+    //                 if (outbuff[index - skip] != outbuff_gold[index]){
+    //                     errors++;
+    //                     std::cout << "ERROR" << std::endl;
+    //                 }
+    //             }
+    //         }
+    //         else{
+    //             std::cout << "SKIPPING" << std::endl;
+    //             skip += 1;
+    //         }
+
+    //         if((index - skip + 1) % key_length == 0 && index != 0){
+    //             key_counter++;
+    //             std::cout << "\n----------KEY " << key_counter << " DONE----------\n" << std::endl;
+    //         }
+    //     }
+
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++){
             if(key_counter == key_num) break;
             unsigned index = i * out_words_adj + j;
-            word_t val = outbuff[index - skip];
+            // word_t val = outbuff[index - skip];
+            unsigned bit = (index - skip) % 32;
+            unsigned word = (index - skip) >> 5;
+            ap_uint<1> val = outbuff_bit[word][bit];
+            // std::cout << " word is " << std::bitset<32>(outbuff_bit[word])
+            //           << " word " << word
+            //           << " bit " << bit
+            //           << std::endl;
             word_t gold_val = outbuff_gold[index];
             if(gold_val != 3){
                 if(!(i == key_batch - (ceil((float)skip/key_length)) && (j > skip - 1) )){
-                    std::cout << "Calculated value " << val << " Golden value " << outbuff_gold[index] << " for index " << index - skip << std::endl;
-                    if (outbuff[index - skip] != outbuff_gold[index]){
+                    std::cout << "Calculated value " << std::dec << val << " Golden value " << outbuff_gold[index] << " for index " << std::dec << index - skip << std::endl;
+                    if (val != gold_val){
                         errors++;
                         std::cout << "ERROR" << std::endl;
                     }
@@ -204,20 +246,25 @@ int main(int argc, char **argv) {
 
             if((index - skip + 1) % key_length == 0 && index != 0){
                 key_counter++;
-                std::cout << "\n----------KEY " << key_counter << " DONE----------\n" << std::endl;
+                std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
+                std::cout << "\nKEY IS: [ ";
+                    for(int k = key_length / 32 - 1; k >= 0; k--)
+                        std::cout << std::hex << outbuff_bit[word-k] << " ";
+                    std::cout << "]\n" << std::endl;
             }
         }
 
     if (errors)
-	std::cout << "Test FAILED with " << errors << " errors." << std::endl;
+	std::cout << "Test FAILED with " << std::dec << errors << " errors." << std::endl;
     else{
-	std::cout << "Keys generated: " << key_counter << std::endl;
+	std::cout << "Keys generated: " << std::dec << key_counter << std::endl;
 	std::cout << "Test PASSED." << std::endl;
     }
 
     // Free memory
 
     free(mem);
+    free(mem_out);
     free(inbuff);
     free(outbuff);
     free(outbuff_gold);

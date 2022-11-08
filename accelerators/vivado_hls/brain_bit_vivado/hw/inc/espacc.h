@@ -25,6 +25,8 @@
 #define SIZE_OUT_CHUNK (SIZE_OUT_CHUNK_DATA / VALUES_PER_WORD + 1)
 #endif
 
+typedef ap_fixed<DATA_BITWIDTH,DATA_BITWIDTH-FRAC_BITS> in_word_t;
+
 // data word
 #if (IS_TYPE_FIXED_POINT ==  1)
 typedef ap_fixed<DATA_BITWIDTH,DATA_BITWIDTH-FRAC_BITS> word_t;
@@ -43,6 +45,10 @@ typedef ap_int<DATA_BITWIDTH> word_t;
 typedef struct dma_word {
     word_t word[VALUES_PER_WORD];
 } dma_word_t;
+
+typedef struct out_dma_word {
+    ap_uint<32> word[VALUES_PER_WORD];
+} out_dma_word_t;
 
 typedef word_t in_data_word;
 typedef word_t out_data_word;
@@ -71,7 +77,7 @@ typedef struct dma_info {
 #define SIZE_WORD_T SIZE_DWORD
 #endif
 
-void top(dma_word_t *out, dma_word_t *in1,
+void top(out_dma_word_t *out, dma_word_t *in1,
 	/* <<--params-->> */
 	 const word_t conf_info_avg,
 	 const unsigned conf_info_key_length,

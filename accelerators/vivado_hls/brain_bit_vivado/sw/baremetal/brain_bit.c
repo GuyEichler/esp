@@ -29,7 +29,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 16;
+const int32_t key_length = 32;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
@@ -69,7 +69,8 @@ static unsigned mem_size;
 #define BRAIN_BIT_KEY_BATCH_REG 0x40
 
 
-static int validate_buf(token_t *out, token_t *gold)
+/* static int validate_buf(token_t *out, token_t *gold) */
+static int validate_buf(unsigned *out, token_t *gold)
 {
 	int i;
 	int j;
@@ -81,7 +82,11 @@ static int validate_buf(token_t *out, token_t *gold)
 		for (j = 0; j < key_length; j++){
 			if(key_counter == key_num) break;
 			unsigned index = i * out_words_adj + j;
-			token_t val = out[index - skip];
+			/* token_t val = out[index - skip]; */
+                        unsigned bit = (index - skip) % 32;
+                        unsigned word = (index - skip) >> 5;
+                        unsigned mask = 1 << bit;
+                        unsigned val = out[word] & mask;
 			token_t gold_val = gold[index];
 			unsigned reduce = (ceil((float)skip/key_length));
 			if(gold_val != 3){
@@ -102,6 +107,10 @@ static int validate_buf(token_t *out, token_t *gold)
 			if((index - skip + 1) % key_length == 0 && index != 0){
 				key_counter++;
 				printf("\n----------KEY %d DONE----------\n", key_counter);
+                                printf("\nKEY IS: [ ");
+                                for(int k = key_length / 32 - 1; k >= 0; k--)
+					printf("%u ", out[word-k]);
+                                printf("]\n");
 			}
 		}
 
@@ -165,9 +174,9 @@ int main(int argc, char * argv[])
 	out_offset  = in_len;
 	mem_size = (out_offset * sizeof(token_t)) + out_size;
 
-        avg_fixed = float_to_fixed32(avg, 12);
-        std_fixed = float_to_fixed32(std, 12);
-        R_fixed = float_to_fixed32(R, 12);
+        /* avg_fixed = float_to_fixed32(avg, 12); */
+        /* std_fixed = float_to_fixed32(std, 12); */
+        /* R_fixed = float_to_fixed32(R, 12); */
 
 	// Search for the device
 	printf("Scanning device tree... \n");
@@ -268,7 +277,7 @@ int main(int argc, char * argv[])
 			printf("  validating...\n");
 
 			/* Validation */
-			errors = validate_buf(&mem[out_offset], gold);
+			errors = validate_buf((unsigned*)&mem[out_offset], gold);
 			if (errors)
 				printf("  ... FAIL\n");
 			else

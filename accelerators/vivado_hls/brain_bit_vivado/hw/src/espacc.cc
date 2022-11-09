@@ -133,7 +133,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 
     word_t Rs = R * std;
     unsigned result;
-    ap_uint<1> result_b;
+    ap_uint<32> result_b;
     static unsigned output_idx = 0;
     static unsigned input_offset = 0;
     unsigned i;
@@ -170,7 +170,12 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
             unsigned bit = output_idx % DATA_BITWIDTH;
             unsigned word = output_idx >> DATA_BITWIDTH_LOG;
 
-            _outbuff_bit[word][bit] = result_b;
+            // _outbuff_bit[word][bit] = result_b;
+            ap_uint<32> bit_val = _outbuff_bit[word];
+            //bit_val[bit] = result_b;
+            bit_val = bit_val >> 1;
+            bit_val = bit_val | (result_b << (DATA_BITWIDTH - 1));
+            _outbuff_bit[word] = bit_val;
 
 #ifndef __SYNTHESIS__
             // std::cout << "COMPUTE : bit equals " << result_b

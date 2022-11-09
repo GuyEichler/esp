@@ -121,10 +121,10 @@ int main(int argc, char **argv) {
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++)
             // if(i * in_words_adj + j < 10){
-            if((i * in_words_adj + j != 10) && (i * in_words_adj + j != 20))
+            // if((i * in_words_adj + j != 10) && (i * in_words_adj + j != 20))
                 inbuff[i * in_words_adj + j] = (word_t) val_arr[i * in_words_adj + j + key_offset];
-            else
-                inbuff[i * in_words_adj + j] = 1000;
+            // else
+            //     inbuff[i * in_words_adj + j] = 1000;
             // }
             // else
             //     inbuff[i * in_words_adj + j] = (word_t) j;
@@ -143,8 +143,8 @@ int main(int argc, char **argv) {
         for(unsigned j = 0; j < key_length; j++)
         {
             float val = val_arr[i * in_words_adj + j + key_offset];
-            if((i * in_words_adj + j == 10) || (i * in_words_adj + j == 20))
-                val = 1000;
+            // if((i * in_words_adj + j == 10) || (i * in_words_adj + j == 20))
+            //     val = 1000;
             bool filter = (fabs((float)val - avg_f) >= Rs);
             if(!filter){
                 result = floor((float)(((val - (avg_f - Rs)) / (2*Rs)) * L));

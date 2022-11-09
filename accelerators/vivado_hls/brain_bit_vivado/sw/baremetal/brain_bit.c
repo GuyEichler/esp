@@ -70,7 +70,7 @@ static unsigned mem_size;
 
 
 /* static int validate_buf(token_t *out, token_t *gold) */
-static int validate_buf(unsigned *out, token_t *gold)
+static int validate_buf(token_t *out, token_t *gold)
 {
 	int i;
 	int j;
@@ -83,15 +83,16 @@ static int validate_buf(unsigned *out, token_t *gold)
 			if(key_counter == key_num) break;
 			unsigned index = i * out_words_adj + j;
 			/* token_t val = out[index - skip]; */
-                        unsigned bit = (index - skip) % 32;
-                        unsigned word = (index - skip) >> 5;
-                        unsigned mask = 1 << bit;
-                        unsigned val = out[word] & mask;
+                        int bit = (index - skip) % 32;
+                        int word = (index - skip) >> 5;
+                        token_t mask = out[word] >> bit;
+                        /* printf("out val is %d for word %d bit %d\n", out[word], word, bit); */
+                        token_t val = mask & 1;
 			token_t gold_val = gold[index];
 			unsigned reduce = (ceil((float)skip/key_length));
 			if(gold_val != 3){
 				if(!(i == key_batch - reduce && (j > skip - 1) )){
-					printf("Calculated value %d Golden value %d for index %d \n",
+					printf("Calculated value %x Golden value %d for index %d \n",
 						val, gold_val, (index-skip));
 					if (gold_val != val){
 						errors++;
@@ -109,7 +110,7 @@ static int validate_buf(unsigned *out, token_t *gold)
 				printf("\n----------KEY %d DONE----------\n", key_counter);
                                 printf("\nKEY IS: [ ");
                                 for(int k = key_length / 32 - 1; k >= 0; k--)
-					printf("%u ", out[word-k]);
+					printf("0x%x ", out[word-k]);
                                 printf("]\n");
 			}
 		}
@@ -277,7 +278,7 @@ int main(int argc, char * argv[])
 			printf("  validating...\n");
 
 			/* Validation */
-			errors = validate_buf((unsigned*)&mem[out_offset], gold);
+			errors = validate_buf(&mem[out_offset], gold);
 			if (errors)
 				printf("  ... FAIL\n");
 			else

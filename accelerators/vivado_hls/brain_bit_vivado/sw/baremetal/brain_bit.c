@@ -12,7 +12,8 @@
 #include <math.h>
 #include <stdbool.h>
 
-#include "input.h"
+//#include "input.h"
+#include "input_full.h"
 
 typedef int32_t token_t;
 /* typedef float token_t; */
@@ -29,14 +30,14 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 32;
+const int32_t key_length = 128;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
-const int32_t key_batch = 2;
-const int32_t key_num = 1;
+const int32_t key_batch = 20;
+const int32_t key_num = 15;
 const float Rs = R * std;
 
 static unsigned in_words_adj;
@@ -111,7 +112,7 @@ static int validate_buf(token_t *out, token_t *gold)
                                 printf("\nKEY IS: [ ");
                                 for(int k = key_length / 32 - 1; k >= 0; k--)
 					printf("0x%x ", out[word-k]);
-                                printf("]\n");
+                                printf("]\n\n");
 			}
 		}
 
@@ -279,7 +280,9 @@ int main(int argc, char * argv[])
 
 			/* Validation */
 			errors = validate_buf(&mem[out_offset], gold);
-			if (errors)
+
+			float total = 100 * (float) errors / (key_length*key_batch);
+			if (total > 1)
 				printf("  ... FAIL\n");
 			else
 				printf("  ... PASS\n");

@@ -13,6 +13,7 @@
 #define DRV_NAME	"brain_bit_vivado"
 
 /* <<--regs-->> */
+#define BRAIN_BIT_KEY_NUM_REG 0x58
 #define BRAIN_BIT_AVG_REG 0x54
 #define BRAIN_BIT_KEY_LENGTH_REG 0x50
 #define BRAIN_BIT_STD_REG 0x4c
@@ -57,6 +58,7 @@ static void brain_bit_prep_xfer(struct esp_device *esp, void *arg)
 	iowrite32be(a->R, esp->iomem + BRAIN_BIT_R_REG);
 	iowrite32be(a->L, esp->iomem + BRAIN_BIT_L_REG);
 	iowrite32be(a->key_batch, esp->iomem + BRAIN_BIT_KEY_BATCH_REG);
+	iowrite32be(a->key_num, esp->iomem + BRAIN_BIT_KEY_NUM_REG);
 	iowrite32be(a->src_offset, esp->iomem + SRC_OFFSET_REG);
 	iowrite32be(a->dst_offset, esp->iomem + DST_OFFSET_REG);
 

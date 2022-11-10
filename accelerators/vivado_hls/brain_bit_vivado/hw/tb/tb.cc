@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
 
     // Prepare input data
     for(unsigned i = 0; i < key_batch; i++)
-        for(unsigned j = 0; j < key_length; j++)
+        for(unsigned j = 0; j < key_length; j++){
             // if(i * in_words_adj + j < 10){
             // if((i * in_words_adj + j != 10) && (i * in_words_adj + j != 20))
                 inbuff[i * in_words_adj + j] = (word_t) val_arr[i * in_words_adj + j + key_offset];
@@ -128,6 +128,7 @@ int main(int argc, char **argv) {
             // }
             // else
             //     inbuff[i * in_words_adj + j] = (word_t) j;
+        }
 
     for(unsigned i = 0; i < dma_in_size; i++)
 	for(unsigned k = 0; k < VALUES_PER_WORD; k++)

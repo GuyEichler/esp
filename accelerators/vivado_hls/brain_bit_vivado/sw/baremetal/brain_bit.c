@@ -228,6 +228,10 @@ int main(int argc, char * argv[])
 #endif
 			printf("  --------------------\n");
 			printf("  Generate input...\n");
+
+			/* for(int k = 0; k < in_len+out_len; k++) */
+			/* 	mem[k] = 0; */
+
 			init_buf(mem, gold);
 
 			// Pass common configuration parameters

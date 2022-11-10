@@ -9,20 +9,26 @@
 typedef int32_t token_t;
 
 /* <<--params-def-->> */
-#define AVG 1
+#define AVG 3.0677295382679177
 #define KEY_LENGTH 128
-#define STD 1
-#define R 1
-#define L 1
-#define KEY_BATCH 1
+#define STD 38.626628825256695
+#define R_val 1.5
+#define L_val 1500
+#define KEY_BATCH 20
+#define KEY_NUM 15
 
 /* <<--params-->> */
-const int32_t avg = AVG;
+const float avg = AVG;
+unsigned* avg_ptr = (unsigned*)&avg;
 const int32_t key_length = KEY_LENGTH;
-const int32_t std = STD;
-const int32_t R = R;
-const int32_t L = L;
+const float std = STD;
+unsigned* std_ptr = (unsigned*)&std;
+const float R = R_val;
+unsigned* R_ptr = (unsigned*)&R;
+const int32_t L = L_val;
 const int32_t key_batch = KEY_BATCH;
+const int32_t key_num = KEY_NUM;
+const float Rs = R * std;
 
 #define NACC 1
 
@@ -35,6 +41,7 @@ struct brain_bit_vivado_access brain_bit_cfg_000[] = {
 		.R = R,
 		.L = L,
 		.key_batch = KEY_BATCH,
+		.key_num = KEY_NUM,
 		.src_offset = 0,
 		.dst_offset = 0,
 		.esp.coherence = ACC_COH_NONE,

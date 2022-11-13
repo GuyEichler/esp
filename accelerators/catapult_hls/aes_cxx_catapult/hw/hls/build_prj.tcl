@@ -16,9 +16,12 @@ source ../../../common/hls/common.tcl
 if {$TECH eq "gf12"} {
     set CLOCK_PERIOD 1.25
     set CLOCK_HIGH_TIME 0.625
+} elseif {$TECH eq "virtexup"} {
+    set CLOCK_PERIOD 11.0
+    set CLOCK_HIGH_TIME 5.5
 } else {
     set CLOCK_PERIOD 10.0
-    set CLOCK_HIGH_TIME 5.0 
+    set CLOCK_HIGH_TIME 5.0
 }
 
 #

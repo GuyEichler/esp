@@ -17,6 +17,7 @@ struct conf_info_t {
     uint32_t key_bytes;
     uint32_t encryption;
     uint32_t oper_mode;
+    uint32_t batch;
 };
 
 #endif // __CONF_INFO_HPP__

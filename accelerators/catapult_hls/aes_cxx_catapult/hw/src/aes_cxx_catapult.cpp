@@ -85,6 +85,8 @@ void CCS_BLOCK(aes_cxx_catapult)(
     uint32_t output_bytes = 0;
     uint32_t aad_bytes = 0;
     uint32_t tag_bytes = 0;
+    uint32_t batch = 1;
+    uint32_t offset_data_index = 0;
 
     // Private Local Memories
     plm_key_t plm_key;
@@ -107,8 +109,10 @@ void CCS_BLOCK(aes_cxx_catapult)(
     iv_bytes = config.iv_bytes;
     aad_bytes = config.aad_bytes;
     tag_bytes = config.tag_bytes;
+    batch = config.batch;
 
     output_bytes = in_bytes;
+    offset_data_index = (key_bytes + 4 - 1) / 4 + (iv_bytes + 4 - 1) / 4 + (in_bytes + 4 - 1) / 4 + (output_bytes + 4 - 1) / 4;
 
     ESP_REPORT_INFO(VON, "conf_info.oper_mode = %u", ESP_TO_UINT32(oper_mode));
     ESP_REPORT_INFO(VON, "conf_info.encryption = %u", ESP_TO_UINT32(encryption));
@@ -117,13 +121,16 @@ void CCS_BLOCK(aes_cxx_catapult)(
     ESP_REPORT_INFO(VON, "conf_info.in_bytes = %u", ESP_TO_UINT32(in_bytes));
     ESP_REPORT_INFO(VON, "conf_info.aad_bytes = %u", ESP_TO_UINT32(aad_bytes));
     ESP_REPORT_INFO(VON, "conf_info.tag_bytes = %u", ESP_TO_UINT32(tag_bytes));
+    ESP_REPORT_INFO(VON, "conf_info.batch = %u", ESP_TO_UINT32(batch));
 
+    for (unsigned i = 0; i < batch; i++) {
+    
     // Configure DMA read channel (CTRL)
     // - DMA_WIDTH for EPOCHS is 64 bits
     // - AES input word is 32 bits
     // - Each DMA transaction is 2 input words
     // - Do some math (ceil) to get the number of data and DMA words given key_bytes
-    dma_read_data_index = 0;
+    dma_read_data_index = 0 + i * offset_data_index;
     dma_read_data_length = (key_bytes + 4 - 1) / 4; // ceil(key_bytes / 4)
     dma_read_info = {(dma_read_data_index + 2 - 1) / 2, (dma_read_data_length + 2 - 1) / 2, SIZE_WORD}; // ceil(dma_read_data_legnth / 2)
     dma_read_ctrl_done = false;
@@ -173,7 +180,7 @@ LOAD_KEY_LOOP:
     // - Each DMA transaction is 2 input words
     // - Do some math (ceil) to get the number of data and DMA words given iv_bytes
     if (oper_mode == CTR_OPERATION_MODE || oper_mode == CBC_OPERATION_MODE) {
-	dma_read_data_index = (key_bytes + 4 - 1) / 4;
+	dma_read_data_index = (key_bytes + 4 - 1) / 4 + i * offset_data_index;
         dma_read_data_length = (iv_bytes + 4 - 1) / 4; // ceil(iv_bytes / 4)
         dma_read_info = {(dma_read_data_index + 2 - 1) / 2, (dma_read_data_length + 2 - 1) / 2, SIZE_WORD}; // ceil(dma_read_data_legnth / 2)
         dma_read_ctrl_done = false;
@@ -222,7 +229,7 @@ LOAD_IV_LOOP:
     // - AES input word is 32 bits
     // - Each DMA transaction is 2 input words
     // - Do some math (ceil) to get the number of data and DMA words given key_bytes
-    dma_read_data_index = (key_bytes + 4 - 1) / 4 + (iv_bytes + 4 - 1) / 4;
+    dma_read_data_index = (key_bytes + 4 - 1) / 4 + (iv_bytes + 4 - 1) / 4 + i * offset_data_index;
     dma_read_data_length = (in_bytes + 4 - 1) / 4; // ceil(key_bytes / 4)
     dma_read_info = {(dma_read_data_index + 2 - 1) / 2, (dma_read_data_length + 2 - 1) / 2, SIZE_WORD}; // ceil(dma_read_data_legnth / 2)
     dma_read_ctrl_done = false;
@@ -272,7 +279,7 @@ LOAD_INPUT_LOOP:
     // - AES output word is 32 bits
     // - Each DMA transaction is 2 output words
     // - Do some math (ceil) to get the number of data and DMA words given out_bytes
-    dma_write_data_index = (key_bytes + 4 - 1) / 4 + (iv_bytes + 4 - 1) / 4 + (in_bytes + 4 - 1) / 4;
+    dma_write_data_index = (key_bytes + 4 - 1) / 4 + (iv_bytes + 4 - 1) / 4 + (in_bytes + 4 - 1) / 4 + i * offset_data_index;
     dma_write_data_length = (output_bytes + 4 - 1) / 4; // ceil(out_bytes / 4)
     dma_write_info = {(dma_write_data_index + 2 - 1) / 2, (dma_write_data_length + 2 - 1) / 2, SIZE_WORD};
     dma_write_ctrl_done = false;
@@ -312,6 +319,8 @@ STORE_LOOP:
 
             dma_write_chnl.write(data_dma);
         }
+    }
+
     }
 
     acc_done.sync_out();

@@ -38,6 +38,7 @@ unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
 const int32_t key_batch = 20;
 const int32_t key_num = 15;
+const int32_t val_num = 0;
 const float Rs = R * std;
 
 static unsigned in_words_adj;
@@ -61,6 +62,7 @@ static unsigned mem_size;
 
 /* User defined registers */
 /* <<--regs-->> */
+#define BRAIN_BIT_VAL_NUM_REG 0x5c
 #define BRAIN_BIT_KEY_NUM_REG 0x58
 #define BRAIN_BIT_AVG_REG 0x54
 #define BRAIN_BIT_KEY_LENGTH_REG 0x50
@@ -263,6 +265,7 @@ int main(int argc, char * argv[])
 			iowrite32(dev, BRAIN_BIT_L_REG, L);
 			iowrite32(dev, BRAIN_BIT_KEY_BATCH_REG, key_batch);
 			iowrite32(dev, BRAIN_BIT_KEY_NUM_REG, key_num);
+			iowrite32(dev, BRAIN_BIT_VAL_NUM_REG, val_num);
 
 			// Flush (customize coherence model here)
 			esp_flush(coherence);

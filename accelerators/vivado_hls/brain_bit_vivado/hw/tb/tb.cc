@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
     const unsigned L = 1500;
     const unsigned key_batch = 20;
     const unsigned key_num = 15;
+    const unsigned val_num = 2;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -174,6 +175,7 @@ int main(int argc, char **argv) {
         L,
         key_batch,
         key_num,
+        val_num,
         load, store);
 
     // Validate
@@ -182,6 +184,7 @@ int main(int argc, char **argv) {
 	for(unsigned k = 0; k < VALUES_PER_WORD; k++){
 	    // outbuff[i * VALUES_PER_WORD + k] = mem[out_offset + i].word[k];
 	    outbuff_bit[i * VALUES_PER_WORD + k] = mem_out[out_offset + i].word[k];
+	    //outbuff[i * VALUES_PER_WORD + k] = mem_out[out_offset + i].word[k];
             // std::cout << " mem val is " << std::bitset<32>(outbuff_bit[i * VALUES_PER_WORD + k]) << std::endl;
         }
 
@@ -218,9 +221,12 @@ int main(int argc, char **argv) {
     //         }
     //     }
 
+    int val_counter = 0;
+    word_t* outbuff_val = (word_t*) &outbuff_bit[0];
+
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++){
-            if(key_counter == key_num) break;
+            if(key_counter != key_num){
             unsigned index = i * out_words_adj + j;
             // word_t val = outbuff[index - skip];
             unsigned bit = (index - skip) % 32;
@@ -253,7 +259,18 @@ int main(int argc, char **argv) {
                         std::cout << std::hex << outbuff_bit[word-k] << " ";
                     std::cout << "]\n" << std::endl;
             }
+            }
+            else if(val_counter != val_num){
+                unsigned index = i * out_words_adj + j - skip;
+                word_t val = outbuff_bit[index];
+                word_t gold_val = val_arr[index + key_offset];
+                if(std::bitset<32>(val) != std::bitset<32>(gold_val))
+                    std::cout << "Calculated value " << std::bitset<32>(val) << " Golden value " << std::bitset<32>(gold_val) << " for index " << std::dec << index << std::endl;
+                if((index - skip + 1) % key_length == 0 && index != 0)
+                    val_counter++;
+            }
         }
+
 
     float total = 100 * (float) errors / (key_length*key_batch);
 

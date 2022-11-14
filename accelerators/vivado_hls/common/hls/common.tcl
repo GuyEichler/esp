@@ -81,6 +81,7 @@ foreach dma $dma_width {
 	set_directive_unroll -factor ${unroll_factor} "load/load_label0"
 	set_directive_array_partition -type cyclic -factor ${unroll_factor} -dim 1 "top" _inbuff
 	set_directive_array_partition -type cyclic -factor ${unroll_factor} -dim 1 "top" _outbuff
+	set_directive_array_partition -type cyclic -factor ${unroll_factor} -dim 1 "top" _outbuff_bit
 
 	# Custom directives
 	source "./directives.tcl"

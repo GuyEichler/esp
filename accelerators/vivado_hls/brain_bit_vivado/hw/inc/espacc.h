@@ -86,6 +86,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 	 const unsigned conf_info_L,
 	 const unsigned conf_info_key_batch,
 	 const unsigned conf_info_key_num,
+	 const unsigned conf_info_val_num,
 	 dma_info_t &load_ctrl, dma_info_t &store_ctrl);
 
 void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],

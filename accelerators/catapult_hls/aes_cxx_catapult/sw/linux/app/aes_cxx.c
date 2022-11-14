@@ -17,29 +17,29 @@ static unsigned out_len;
 static unsigned out_offset;
 static unsigned size_bytes;
 
-/*
+
 //static unsigned tag_bytes;
-static unsigned aad_bytes;
-static unsigned in_bytes;
-static unsigned out_bytes;
-static unsigned iv_bytes;
-static unsigned key_bytes;
-static unsigned encryption;
-static unsigned oper_mode;
-*/
-static unsigned key_words;
-static unsigned iv_words;
+/* static unsigned aad_bytes; */
+/* static unsigned in_bytes; */
+/* static unsigned out_bytes; */
+/* static unsigned iv_bytes; */
+/* static unsigned key_bytes; */
+/* static unsigned encryption; */
+/* static unsigned oper_mode; */
+
+/* static unsigned key_words; */
+/* static unsigned iv_words; */
 static unsigned in_words;
 static unsigned out_words;
-static unsigned aad_words;
-static unsigned tag_words;
+/* static unsigned aad_words; */
+/* static unsigned tag_words; */
 
-static unsigned key_size;
-static unsigned iv_size;
+/* static unsigned key_size; */
+/* static unsigned iv_size; */
 static unsigned in_size;
 static unsigned out_size;
-static unsigned aad_size;
-static unsigned tag_size;
+/* static unsigned aad_size; */
+/* static unsigned tag_size; */
 
 //input_size for each iteration
 const unsigned array_size[12] = {16, 32, 48, 64, 80, 96, 112, 128, 144};
@@ -47,7 +47,7 @@ const unsigned array_size[12] = {16, 32, 48, 64, 80, 96, 112, 128, 144};
 /* User-defined code */
 static int validate_buffer(token_t *out, token_t *gold, unsigned indx)
 {
-	int i;
+	/* int i; */
 	int j;
 	unsigned errors = 0;
 
@@ -58,7 +58,7 @@ static int validate_buffer(token_t *out, token_t *gold, unsigned indx)
     {
         token_t gold_data = gold[j];
         token_t out_data = out[j];
-            
+
         printf("INFO: [%u] @%p %x (%x) %s\n", j, out + j, out_data, gold_data, ((out_data != gold_data)?" !!!":""));
 
         if (out_data != gold_data)
@@ -79,7 +79,7 @@ static void init_buffer(token_t *in, token_t * gold, token_t *out, unsigned indx
 {
 	int i;
 	int j;
-    
+
     printf("INFO: raw_encrypt_plaintext_words[%u] %u\n", indx, ecb_raw_encrypt_plaintext_words[indx]);
     printf("INFO: ecb_raw_encrypt_ciphertext_words[%u] %u\n", indx, ecb_raw_encrypt_ciphertext_words[indx]);
     
@@ -152,14 +152,14 @@ int main(int argc, char **argv)
 
 	token_t *gold;
 	token_t *buf_0;
-	token_t *buf_1;
+	/* token_t *buf_1; */
 
-    printf("INFO:   sizeof(token_t) = %u\n", sizeof(token_t));
+    printf("INFO:   sizeof(token_t) = %lu\n", sizeof(token_t));
 
     for (unsigned i = 1; i < N_BATCH; i++) {
         init_parameters(i);
-        const uint32_t new_in_size = in_size;
-        volatile uint32_t new_in_size_reg = *(volatile uint32_t *) &new_in_size; // = in_size - 16;
+        /* const uint32_t new_in_size = in_size; */
+        /* volatile uint32_t new_in_size_reg = *(volatile uint32_t *) &new_in_size; // = in_size - 16; */
 
         buf_0 = (token_t *) esp_alloc(size_bytes);
         cfg_000[0].hw_buf = buf_0;
@@ -180,6 +180,7 @@ int main(int argc, char **argv)
         printf("  .iv_bytes = %d\n", iv_bytes);
         printf("  .aad_bytes = %d\n", aad_bytes);
         printf("  .tag_bytes = %d\n", tag_bytes);
+        printf("  .batch = %d\n", batch);
         printf("\n  ** START **\n");
 
 
@@ -212,6 +213,6 @@ int main(int argc, char **argv)
 
         printf("\n====== %s ======\n\n", cfg_000[0].devname);
     }
-	  
+
 	return (errors_0 + errors_1);
 }

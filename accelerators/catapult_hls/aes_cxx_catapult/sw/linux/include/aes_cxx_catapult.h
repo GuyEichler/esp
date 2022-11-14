@@ -20,14 +20,15 @@
 struct aes_cxx_catapult_access {
 	struct esp_access esp;
 	/* <<--regs-->> */
-	unsigned int oper_mode;
-    unsigned int encryption;
-    unsigned int key_bytes;
-    unsigned int input_bytes;
-    unsigned int iv_bytes;
-    unsigned int aad_bytes;
-    unsigned int tag_bytes; 
-    unsigned src_offset;
+	unsigned oper_mode;
+	unsigned encryption;
+	unsigned key_bytes;
+	unsigned input_bytes;
+	unsigned iv_bytes;
+	unsigned aad_bytes;
+	unsigned tag_bytes;
+	unsigned batch;
+	unsigned src_offset;
 	unsigned dst_offset;
 };
 

@@ -29,6 +29,7 @@ static unsigned iv_bytes;
 static unsigned key_bytes;
 static unsigned encryption;
 static unsigned oper_mode;
+static unsigned batch;
 
 static unsigned key_words;
 static unsigned iv_words;
@@ -69,13 +70,14 @@ const unsigned aes_tag_size = 4;
 #define AES_CXX_IV_BYTES_REG 0x50
 #define AES_CXX_AAD_BYTES_REG 0x54
 #define AES_CXX_TAG_BYTES_REG 0x58
+#define AES_CXX_BATCH_REG 0x5C
 
 /* Possible values of 'encryption' */
 //#define ENCRYPTION_MODE 1
 //#define DECRYPTION_MODE 2
 
 /* Possible values of 'oper_mode' */
-//#define AES_ECB_OPERATION_MODE 1
+#define AES_ECB_OPERATION_MODE 1
 //#define AES_CTR_OPERATION_MODE 2
 //#define AES_CBC_OPERATION_MODE 3
 //#define GCM_OPERATION_MODE 4
@@ -370,6 +372,8 @@ int main(int argc, char * argv[])
         aad_bytes = 0;
         iv_bytes = 0;
 
+	batch = 1;
+
         out_bytes = in_bytes;
         out_words = in_words;
         out_size = out_words * sizeof(token_t);
@@ -394,6 +398,8 @@ int main(int argc, char * argv[])
         tag_bytes = 0;
         aad_bytes = 0;
 
+	batch = 1;
+
         out_bytes = in_bytes;
         out_words = in_words;
         out_size = out_words * sizeof(token_t);
@@ -417,6 +423,8 @@ int main(int argc, char * argv[])
 
         tag_bytes = 0;
         aad_bytes = 0;
+
+	batch = 1;
 
         out_bytes = in_bytes;
         out_words = in_words;
@@ -494,6 +502,7 @@ int main(int argc, char * argv[])
             iowrite32(dev, AES_CXX_IV_BYTES_REG, iv_bytes);
             iowrite32(dev, AES_CXX_AAD_BYTES_REG, aad_bytes);
             iowrite32(dev, AES_CXX_TAG_BYTES_REG, tag_bytes);
+            iowrite32(dev, AES_CXX_BATCH_REG, batch);
 
             // Flush (customize coherence model here)
             //esp_flush(ACC_COH_NONE);

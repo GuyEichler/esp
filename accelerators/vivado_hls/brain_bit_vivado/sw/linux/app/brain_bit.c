@@ -23,10 +23,11 @@ static int validate_buffer(token_t *out, token_t *gold)
 
 	int skip = 0;
 	key_counter = 0;
+	int val_counter = 0;
 
 	for (i = 0; i < key_batch; i++)
 		for (j = 0; j < key_length; j++){
-			if(key_counter == key_num) break;
+			if(key_counter != key_num){
 			unsigned index = i * out_words_adj + j;
 			/* token_t val = out[index - skip]; */
                         int bit = (index - skip) % 32;
@@ -59,6 +60,16 @@ static int validate_buffer(token_t *out, token_t *gold)
 					printf("0x%x ", out[word-k]);
                                 printf("]\n\n");
 			}
+			}
+			else if(val_counter != val_num){
+                                unsigned index = i * out_words_adj + j - skip;
+                                token_t val = out[index];
+                                token_t gold_val = (token_t) float_to_fixed32(val_arr[index], 12);
+                                if(val != gold_val)
+					printf("Calculated value %x Golden value %x for index %d \n", val, gold_val, index);
+                                if((index + 1) % key_length == 0 && index != 0)
+                                        val_counter++;
+                        }
 		}
 
 	return errors;

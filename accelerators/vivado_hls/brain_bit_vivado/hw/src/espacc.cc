@@ -41,7 +41,7 @@ load_data:
 
         for (unsigned i = 0; i < dma_length; i++) {
 
-#pragma HLS loop_tripcount max=128
+#pragma HLS loop_tripcount max=512
 
         load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
                 _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
@@ -61,12 +61,20 @@ void store(out_dma_word_t *out,
            const unsigned key_num,
          bool &is_output_ready,
          unsigned &keys_done,
+         bool &is_keys,
            dma_info_t &store_ctrl, //int batch,
-         ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA])
+         ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
 {
 store_data:
 
-    const unsigned length = round_up(key_length >> DATA_BITWIDTH_LOG, VALUES_PER_WORD);
+    unsigned length;
+
+    if(is_keys)
+        length = round_up(key_length >> DATA_BITWIDTH_LOG, VALUES_PER_WORD);
+    else
+        length = round_up(key_length, VALUES_PER_WORD);
+
+    // const unsigned length = round_up(key_length >> DATA_BITWIDTH_LOG, VALUES_PER_WORD);
     const unsigned store_offset = round_up(key_length, VALUES_PER_WORD) * key_batch;
     const unsigned out_offset = store_offset;
 
@@ -78,26 +86,34 @@ store_data:
 
     if(is_output_ready){
 
-    store_ctrl.index = dma_index;
-    store_ctrl.length = dma_length;
-    store_ctrl.size = SIZE_WORD_T;
-
-    for (unsigned i = 0; i < dma_length; i++) {
-
-#pragma HLS loop_tripcount max=4
-
-    store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
-            out[dma_index + i].word[j] = _outbuff_bit[i * VALUES_PER_WORD + j];
+        store_ctrl.index = dma_index;
+        store_ctrl.length = dma_length;
+        store_ctrl.size = SIZE_WORD_T;
 
 #ifndef __SYNTHESIS__
-            std::cout << "STORE : Sent "
-                      << std::bitset<32>(_outbuff_bit[i * VALUES_PER_WORD + j])
-                      << " in memory "
-                      << std::bitset<32>(out[dma_index + i].word[j]) << std::endl;
+                std::cout << "STORE : dma_index "
+                          << dma_index
+                          << " dma_length "
+                          << dma_length
+                          << std::endl;
 #endif
 
+        for (unsigned i = 0; i < dma_length; i++) {
+
+#pragma HLS loop_tripcount max=512
+
+        store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
+                out[dma_index + i].word[j] = _outbuff_bit[i * VALUES_PER_WORD + j];
+
+#ifndef __SYNTHESIS__
+                std::cout << "STORE : Sent "
+                          << std::bitset<32>(_outbuff_bit[i * VALUES_PER_WORD + j])
+                          << " in memory "
+                          << std::bitset<32>(out[dma_index + i].word[j]) << std::endl;
+#endif
+
+            }
         }
-    }
 
 
 #ifndef __SYNTHESIS__
@@ -107,74 +123,10 @@ store_data:
         keys_done = keys_done + 1;
 
 #ifndef __SYNTHESIS__
-            std::cout << "STORE : Keys generated " << keys_done << std::endl;
+        std::cout << "STORE : Keys generated " << keys_done << std::endl;
 #endif
 
     }
-
-}
-
-void store_val(out_dma_word_t *out,
-          /* <<--store-params-->> */
-	 const word_t avg,
-	 const unsigned key_length,
-	 const word_t std,
-	 const word_t R,
-	 const unsigned L,
-	 const unsigned key_batch,
-           const unsigned key_num,
-         // bool &is_output_ready,
-         unsigned &keys_done,
-           dma_info_t &store_ctrl, //int batch,
-               word_t _inbuff[SIZE_IN_CHUNK_DATA])
-{
-store_data:
-
-    const unsigned length = round_up(key_length, VALUES_PER_WORD);
-    const unsigned store_offset = round_up(key_length, VALUES_PER_WORD) * key_batch;
-    const unsigned out_offset = store_offset;
-
-    const unsigned offset = keys_done * length;
-    const unsigned index = out_offset + offset;
-
-    unsigned dma_length = length / VALUES_PER_WORD;
-    unsigned dma_index = index / VALUES_PER_WORD;
-
-    // if(is_output_ready){
-
-    store_ctrl.index = dma_index;
-    store_ctrl.length = dma_length;
-    store_ctrl.size = SIZE_WORD_T;
-
-    for (unsigned i = 0; i < dma_length; i++) {
-
-#pragma HLS loop_tripcount max=128
-
-    store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
-            out[dma_index + i].word[j] = _inbuff[i * VALUES_PER_WORD + j];
-
-#ifndef __SYNTHESIS__
-            std::cout << "STORE VAL : Sent "
-                      << std::bitset<32>(_inbuff[i * VALUES_PER_WORD + j])
-                      << " in memory "
-                      << std::bitset<32>(out[dma_index + i].word[j]) << std::endl;
-#endif
-
-        }
-     }
-
-
-#ifndef __SYNTHESIS__
-        std::cout << "STORE VAL : Output was sent " << std::endl;
-#endif
-
-        keys_done = keys_done + 1;
-
-#ifndef __SYNTHESIS__
-            std::cout << "STORE : Values passed " << keys_done << std::endl;
-#endif
-
-            //}
 
 }
 
@@ -190,7 +142,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
          bool &is_output_ready,
          bool &load_values,
          // unsigned &add,
-         ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA])
+         ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
 {
 
     const unsigned in_length = round_up(key_length, VALUES_PER_WORD);
@@ -202,13 +154,15 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     static unsigned input_offset = 0;
     unsigned i;
 
+    // static ap_uint<32> bit_val_tot = 0;
+
 #ifndef __SYNTHESIS__
     std::cout << "COMPUTE : Input offset is " << input_offset << std::endl;
 #endif
 
-    for (i = 0 + input_offset; i < in_length; i++){
+COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
 
-#pragma HLS loop_tripcount max=128
+#pragma HLS loop_tripcount max=1024
 
         word_t val = _inbuff[i];
         bool filter;// = (fabs(val - avg) >= Rs);
@@ -236,10 +190,15 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 
             // _outbuff_bit[word][bit] = result_b;
             ap_uint<32> bit_val = _outbuff_bit[word];
+            // ap_uint<32> bit_val = bit_val_tot;
             //bit_val[bit] = result_b;
             bit_val = bit_val >> 1;
             bit_val = bit_val | (result_b << (DATA_BITWIDTH - 1));
             _outbuff_bit[word] = bit_val;
+            // if(bit == DATA_BITWIDTH - 1)
+            //     _outbuff_bit[word] = bit_val;
+            // else
+            //     bit_val_tot = bit_val;
 
 #ifndef __SYNTHESIS__
             // std::cout << "COMPUTE : bit equals " << result_b
@@ -311,6 +270,46 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 
 }
 
+void compute_val(word_t _inbuff[SIZE_IN_CHUNK_DATA],
+             /* <<--compute-params-->> */
+	 const word_t avg,
+	 const unsigned key_length,
+	 const word_t std,
+	 const word_t R,
+	 const unsigned L,
+	 const unsigned key_batch,
+            const unsigned key_num,
+         ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
+{
+
+    // const unsigned in_length = round_up(key_length, VALUES_PER_WORD);
+
+    // word_t Rs = R * std;
+    // unsigned result;
+    // ap_uint<32> result_b;
+    // static unsigned output_idx = 0;
+    // static unsigned input_offset = 0;
+    // unsigned i;
+
+ASSIGN_LOOP:for(unsigned i = 0; i < key_length; i++){
+        word_t word = _inbuff[i];
+    BIT_LOOP:for(unsigned j = 0; j < DATA_BITWIDTH; j++){
+            bool bit = word[j];
+            _outbuff_bit[i](j,j) = word[j];
+        }
+
+#ifndef __SYNTHESIS__
+        std::cout << "COMPUTE VAL : Passed "
+                  << std::bitset<32>(_outbuff_bit[i])
+                  << " Received "
+                  << word.to_string()
+                  << std::endl;
+#endif
+
+    }
+
+}
+
 
 void top(out_dma_word_t *out, dma_word_t *in1,
             /* <<--params-->> */
@@ -328,6 +327,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         /* <<--local-params-->> */
         const word_t avg = conf_info_avg;
         const unsigned key_length = conf_info_key_length;
+        // const unsigned val_length = conf_info_key_length << DATA_BITWIDTH_LOG;
         const word_t std = conf_info_std;
         const word_t R = conf_info_R;
         const unsigned L = conf_info_L;
@@ -345,9 +345,12 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         //Memories
         // static word_t _inbuff[SIZE_IN_CHUNK_DATA];
         static word_t _inbuff[SIZE_IN_CHUNK_DATA];
-        static ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA];
+        // static ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA];
+        static ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA];
 
         unsigned b = 0;
+
+        bool is_keys = true;
 
     // Keys loop
     keys:
@@ -395,6 +398,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             key_num,
             is_output_ready,
             keys_done,
+            is_keys,
             store_ctrl, //b,
             _outbuff_bit);
 
@@ -410,6 +414,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
     }
 
     values_done = keys_done;//start from keys_done for offsetting memory
+    is_keys = false;
 
     //values loop
     values:
@@ -422,6 +427,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
     go_2:
 
         bool load_values_raw = true;
+        bool is_output_raw = true;
 
         load(_inbuff, in1,
             /* <<--args-->> */
@@ -435,21 +441,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             load_values_raw,
             load_ctrl, b_v+b);
 
-        // compute(_inbuff,
-        //     /* <<--args-->> */
-        //     avg,
-        //     key_length,
-        //     std,
-        //     R,
-        //     L,
-        //     key_batch,
-        //     key_num,
-        //     is_output_ready,
-        //     load_values,
-        //     // add,
-        //     _outbuff_bit);
-
-            store_val(out,
+        compute_val(_inbuff,
             /* <<--args-->> */
             avg,
             key_length,
@@ -458,10 +450,22 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             L,
             key_batch,
             key_num,
-            // is_output_ready,
+            _outbuff_bit);
+
+            store(out,
+            /* <<--args-->> */
+            avg,
+            key_length,
+            std,
+            R,
+            L,
+            key_batch,
+            key_num,
+            is_output_raw,
             values_done,
+            is_keys,
             store_ctrl, //b,
-            _inbuff);
+            _outbuff_bit);
 
             //b = b + 1;
 

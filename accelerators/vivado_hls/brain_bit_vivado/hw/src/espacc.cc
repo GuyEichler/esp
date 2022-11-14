@@ -114,6 +114,70 @@ store_data:
 
 }
 
+void store_val(out_dma_word_t *out,
+          /* <<--store-params-->> */
+	 const word_t avg,
+	 const unsigned key_length,
+	 const word_t std,
+	 const word_t R,
+	 const unsigned L,
+	 const unsigned key_batch,
+           const unsigned key_num,
+         // bool &is_output_ready,
+         unsigned &keys_done,
+           dma_info_t &store_ctrl, //int batch,
+               word_t _inbuff[SIZE_IN_CHUNK_DATA])
+{
+store_data:
+
+    const unsigned length = round_up(key_length, VALUES_PER_WORD);
+    const unsigned store_offset = round_up(key_length, VALUES_PER_WORD) * key_batch;
+    const unsigned out_offset = store_offset;
+
+    const unsigned offset = keys_done * length;
+    const unsigned index = out_offset + offset;
+
+    unsigned dma_length = length / VALUES_PER_WORD;
+    unsigned dma_index = index / VALUES_PER_WORD;
+
+    // if(is_output_ready){
+
+    store_ctrl.index = dma_index;
+    store_ctrl.length = dma_length;
+    store_ctrl.size = SIZE_WORD_T;
+
+    for (unsigned i = 0; i < dma_length; i++) {
+
+#pragma HLS loop_tripcount max=128
+
+    store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
+            out[dma_index + i].word[j] = _inbuff[i * VALUES_PER_WORD + j];
+
+#ifndef __SYNTHESIS__
+            std::cout << "STORE VAL : Sent "
+                      << std::bitset<32>(_inbuff[i * VALUES_PER_WORD + j])
+                      << " in memory "
+                      << std::bitset<32>(out[dma_index + i].word[j]) << std::endl;
+#endif
+
+        }
+     }
+
+
+#ifndef __SYNTHESIS__
+        std::cout << "STORE VAL : Output was sent " << std::endl;
+#endif
+
+        keys_done = keys_done + 1;
+
+#ifndef __SYNTHESIS__
+            std::cout << "STORE : Values passed " << keys_done << std::endl;
+#endif
+
+            //}
+
+}
+
 void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
              /* <<--compute-params-->> */
 	 const word_t avg,
@@ -257,6 +321,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             const unsigned conf_info_L,
             const unsigned conf_info_key_batch,
             const unsigned conf_info_key_num,
+            const unsigned conf_info_val_num,
             dma_info_t &load_ctrl, dma_info_t &store_ctrl)
 {
 
@@ -268,11 +333,14 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         const unsigned L = conf_info_L;
         const unsigned key_batch = conf_info_key_batch;
         const unsigned key_num = conf_info_key_num;
+        const unsigned val_num = conf_info_val_num;
 
         bool is_output_ready = false;
         bool load_values = true;
+
         // unsigned add = 0;
         unsigned keys_done = 0;
+        unsigned values_done = 0;
 
         //Memories
         // static word_t _inbuff[SIZE_IN_CHUNK_DATA];
@@ -281,8 +349,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 
         unsigned b = 0;
 
-        // Batching
-    batching:
+    // Keys loop
+    keys:
     // for (unsigned b = 0; b < key_batch + add; b++)
     while(keys_done != key_num)
     {
@@ -336,6 +404,70 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 #ifndef __SYNTHESIS__
         if(keys_done == key_num){
             std::cout << "TOP : Enough keys were generated " << std::endl;
+        }
+#endif
+
+    }
+
+    values_done = keys_done;//start from keys_done for offsetting memory
+
+    //values loop
+    values:
+    for (unsigned b_v = 0; b_v < val_num; b_v++)
+    // while(values_done != val_num)
+    {
+
+#pragma HLS loop_tripcount max=1024
+
+    go_2:
+
+        bool load_values_raw = true;
+
+        load(_inbuff, in1,
+            /* <<--args-->> */
+            avg,
+            key_length,
+            std,
+            R,
+            L,
+            key_batch,
+            val_num,
+            load_values_raw,
+            load_ctrl, b_v+b);
+
+        // compute(_inbuff,
+        //     /* <<--args-->> */
+        //     avg,
+        //     key_length,
+        //     std,
+        //     R,
+        //     L,
+        //     key_batch,
+        //     key_num,
+        //     is_output_ready,
+        //     load_values,
+        //     // add,
+        //     _outbuff_bit);
+
+            store_val(out,
+            /* <<--args-->> */
+            avg,
+            key_length,
+            std,
+            R,
+            L,
+            key_batch,
+            key_num,
+            // is_output_ready,
+            values_done,
+            store_ctrl, //b,
+            _inbuff);
+
+            //b = b + 1;
+
+#ifndef __SYNTHESIS__
+        if(values_done == val_num+key_num){
+            std::cout << "TOP : Enough values were generated " << std::endl;
         }
 #endif
 

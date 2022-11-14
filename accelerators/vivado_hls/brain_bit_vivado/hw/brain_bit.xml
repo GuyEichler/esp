@@ -8,5 +8,6 @@
     <param name="key_length" desc="key_length" />
     <param name="avg" desc="avg" />
     <param name="key_num" desc="key_num" />
+    <param name="val_num" desc="val_num" />
   </accelerator>
 </sld>

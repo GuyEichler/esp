@@ -27,6 +27,7 @@ struct brain_bit_vivado_access {
 	unsigned L;
 	unsigned key_batch;
 	unsigned key_num;
+	unsigned val_num;
 	unsigned src_offset;
 	unsigned dst_offset;
 };

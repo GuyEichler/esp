@@ -6,7 +6,7 @@
 
 #include <sys/time.h>
 
-#define N_BATCH 7 
+#define N_BATCH 9 
 static unsigned in_words_adj;
 static unsigned out_words_adj;
 
@@ -59,12 +59,11 @@ static int validate_buffer(token_t *out, token_t *gold, unsigned indx)
         token_t gold_data = gold[j];
         token_t out_data = out[j];
 
-        printf("INFO: [%u] @%p %x (%x) %s\n", j, out + j, out_data, gold_data, ((out_data != gold_data)?" !!!":""));
 
         if (out_data != gold_data)
         {
             errors++;
-        //    printf("INFO: [%u] @%p %x (%x) %s\n", j, out + j, out_data, gold_data, ((out_data != gold_data)?" !!!":""));
+            printf("INFO: [%u] @%p %x (%x) %s\n", j, out + j, out_data, gold_data, ((out_data != gold_data)?" !!!":""));
         }
     }
 
@@ -85,24 +84,18 @@ static void init_buffer(token_t *in, token_t * gold, token_t *out, unsigned indx
     
     for (j = 0; j < ecb_raw_encrypt_key_words[indx]; j++) {
         in[j] = ecb_raw_encrypt_key[indx][j];
-        printf("INFO: raw_encrypt_key[%u][%u] | %x\n", indx, j, in[j]);
+        //printf("INFO: raw_encrypt_key[%u][%u] | %x\n", indx, j, in[j]);
     }
     
     for (i = 0; i < ecb_raw_encrypt_plaintext_words[indx]; i++, j++)
     {
         in[j] = ecb_raw_encrypt_plaintext[indx][i];
-        printf("INFO: raw_encrypt_plaintext[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
-    }
-    
-    for (i = 0; i < ecb_raw_encrypt_plaintext_words[indx]; i++, j++)
-    {
-        //in[j] = ecb_raw_encrypt_plaintext[indx][i];
-        printf("INFO: raw_encrypty_output[%u][%u] | outputs[%u]@%p %x\n", indx, i, i, out + i, *(out + i));
+        //printf("INFO: raw_encrypt_plaintext[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
     }
 
     for (j = 0; j < ecb_raw_encrypt_ciphertext_words[indx]; j++) {
         gold[j] = ecb_raw_encrypt_ciphertext[indx][j];
-        printf("INFO: raw_encrypt_ciphertext[%u][%u] %x\n", indx, j, gold[j]);
+        //printf("INFO: raw_encrypt_ciphertext[%u][%u] %x\n", indx, j, gold[j]);
     }
 
 }
@@ -135,14 +128,6 @@ static void init_parameters(unsigned indx)
     printf("%s: out_offset = %u\n", __func__, out_offset);
     size_bytes = (out_offset * sizeof(token_t)) + out_size;
     printf("%s: size = %u\n", __func__, size_bytes);
-/*
-    in_size = ecb_raw_encrypt_plaintext_bytes [indx];
-    key_size = ecb_raw_encrypt_key_bytes[indx];
-    out_size = in_size;
-    out_offset = ecb_raw_encrypt_plaintext_words[indx] + ecb_raw_encrypt_key_words[indx];
-    size_bytes = in_size + key_size + out_size;
-    printf("%s: in_size = %u out_size =%u  key_size = %u  tot_size =%u\n", __func__, in_size, out_size, key_size, size_bytes);
- */
  }
 
 int main(int argc, char **argv)
@@ -152,7 +137,6 @@ int main(int argc, char **argv)
 
 	token_t *gold;
 	token_t *buf_0;
-	/* token_t *buf_1; */
 
     printf("INFO:   sizeof(token_t) = %lu\n", sizeof(token_t));
 

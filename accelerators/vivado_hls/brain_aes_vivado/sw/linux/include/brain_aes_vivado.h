@@ -1,7 +1,7 @@
 // Copyright (c) 2011-2022 Columbia University, System Level Design Group
 // SPDX-License-Identifier: Apache-2.0
-#ifndef _BRAIN_BIT_VIVADO_H_
-#define _BRAIN_BIT_VIVADO_H_
+#ifndef _BRAIN_AES_VIVADO_H_
+#define _BRAIN_AES_VIVADO_H_
 
 #ifdef __KERNEL__
 #include <linux/ioctl.h>
@@ -34,4 +34,4 @@ struct brain_bit_vivado_access {
 
 #define BRAIN_BIT_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct brain_bit_vivado_access)
 
-#endif /* _BRAIN_BIT_VIVADO_H_ */
+#endif /* _BRAIN_AES_VIVADO_H_ */

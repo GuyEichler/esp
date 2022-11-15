@@ -75,7 +75,7 @@ const unsigned aes_tag_size = 4;
 //#define DECRYPTION_MODE 2
 
 /* Possible values of 'oper_mode' */
-//#define AES_ECB_OPERATION_MODE 1
+#define AES_ECB_OPERATION_MODE 1
 //#define AES_CTR_OPERATION_MODE 2
 //#define AES_CBC_OPERATION_MODE 3
 //#define GCM_OPERATION_MODE 4

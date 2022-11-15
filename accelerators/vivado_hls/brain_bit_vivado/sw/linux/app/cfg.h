@@ -16,7 +16,7 @@ typedef int32_t token_t;
 #define L_val 1500
 #define KEY_BATCH 20
 #define KEY_NUM 15
-#define VAL_NUM 0
+#define VAL_NUM 2
 
 /* <<--params-->> */
 const float avg = AVG;

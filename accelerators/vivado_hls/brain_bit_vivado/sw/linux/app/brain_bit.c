@@ -28,45 +28,48 @@ static int validate_buffer(token_t *out, token_t *gold)
 	for (i = 0; i < key_batch; i++)
 		for (j = 0; j < key_length; j++){
 			if(key_counter != key_num){
-			unsigned index = i * out_words_adj + j;
-			/* token_t val = out[index - skip]; */
-                        int bit = (index - skip) % 32;
-                        int word = (index - skip) >> 5;
-                        token_t mask = out[word] >> bit;
-                        /* printf("out val is %x for word %d bit %d\n", out[word], word, bit); */
-                        token_t val = mask & 1;
-			token_t gold_val = gold[index];
-			unsigned reduce = (ceil((float)skip/key_length));
-			if(gold_val != 3){
-				if(!(i == key_batch - reduce && (j > skip - 1) )){
-					printf("Calculated value %x Golden value %d for index %d \n",
-						val, gold_val, (index-skip));
-					if (gold_val != val){
-						errors++;
-						printf("ERROR\n");
+				unsigned index = i * out_words_adj + j;
+				/* token_t val = out[index - skip]; */
+				int bit = (index - skip) % 32;
+				int word = (index - skip) >> 5;
+				token_t mask = out[word] >> bit;
+				/* printf("out val is %x for word %d bit %d\n", out[word], word, bit); */
+				token_t val = mask & 1;
+				token_t gold_val = gold[index];
+				unsigned reduce = (ceil((float)skip/key_length));
+				if(gold_val != 3){
+					if(!(i == key_batch - reduce && (j > skip - 1) )){
+						printf("Calculated value %x Golden value %d for index %d \n",val, gold_val, (index-skip));
+						if (gold_val != val){
+							errors++;
+							printf("ERROR\n");
+						}
 					}
 				}
-			}
-			else{
-				printf("SKIPPING\n");
-				skip += 1;
-			}
+				else{
+					printf("SKIPPING\n");
+					skip += 1;
+				}
 
-			if((index - skip + 1) % key_length == 0 && index != 0){
-				key_counter++;
-				printf("\n----------KEY %d DONE----------\n", key_counter);
-                                printf("\nKEY IS: [ ");
-                                for(int k = key_length / 32 - 1; k >= 0; k--)
-					printf("0x%x ", out[word-k]);
-                                printf("]\n\n");
-			}
+				if((index - skip + 1) % key_length == 0 && index != 0){
+					key_counter++;
+					printf("\n----------KEY %d DONE----------\n", key_counter);
+					printf("\nKEY IS: [ ");
+					for(int k = key_length / 32 - 1; k >= 0; k--)
+						printf("0x%x ", out[word-k]);
+					printf("]\n\n");
+				}
 			}
 			else if(val_counter != val_num){
                                 unsigned index = i * out_words_adj + j - skip;
                                 token_t val = out[index];
                                 token_t gold_val = (token_t) float_to_fixed32(val_arr[index], 12);
-                                if(val != gold_val)
+
+                                if(val != gold_val){
 					printf("Calculated value %x Golden value %x for index %d \n", val, gold_val, index);
+					printf("ERROR\n");
+					errors += key_length;
+				}
                                 if((index + 1) % key_length == 0 && index != 0)
                                         val_counter++;
                         }
@@ -165,9 +168,9 @@ int main(int argc, char **argv)
         /* printf("Value std: %x\n", ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->std); */
         /* printf("Value R: %x\n", ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->R); */
 
-	/* token_t* out_location = &buf[out_offset]; */
-	/* for(int i = 0; i < out_len; i++) */
-	/* 	out_location[i] = 0; */
+	token_t* out_location = &buf[out_offset];
+	for(int i = 0; i < out_len; i++)
+		out_location[i] = 0;
 
 	esp_run(cfg_000, NACC);
 

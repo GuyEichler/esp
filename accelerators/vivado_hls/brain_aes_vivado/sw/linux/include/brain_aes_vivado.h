@@ -32,6 +32,24 @@ struct brain_bit_vivado_access {
 	unsigned dst_offset;
 };
 
+struct aes_cxx_catapult_access {
+	struct esp_access esp;
+	/* <<--regs-->> */
+	unsigned oper_mode;
+	unsigned encryption;
+	unsigned key_bytes;
+	unsigned input_bytes;
+	unsigned iv_bytes;
+	unsigned aad_bytes;
+	unsigned tag_bytes;
+	unsigned batch;
+	unsigned src_offset;
+	unsigned dst_offset;
+};
+
+
 #define BRAIN_BIT_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct brain_bit_vivado_access)
+#define AES_CXX_CATAPULT_IOC_ACCESS	_IOW ('S', 0, struct aes_cxx_catapult_access)
+
 
 #endif /* _BRAIN_AES_VIVADO_H_ */

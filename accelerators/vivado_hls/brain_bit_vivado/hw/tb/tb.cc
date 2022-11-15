@@ -262,11 +262,17 @@ int main(int argc, char **argv) {
             }
             else if(val_counter != val_num){
                 unsigned index = i * out_words_adj + j - skip;
-                word_t val = outbuff_bit[index];
+                ap_uint<32> val = outbuff_bit[index];
+                word_t val_word = 0;
                 word_t gold_val = val_arr[index + key_offset];
-                if(std::bitset<32>(val) != std::bitset<32>(gold_val))
-                    std::cout << "Calculated value " << std::bitset<32>(val) << " Golden value " << std::bitset<32>(gold_val) << " for index " << std::dec << index << std::endl;
-                if((index - skip + 1) % key_length == 0 && index != 0)
+                for(int b = 0; b < DATA_BITWIDTH; b++){
+                    ap_uint<1> val_bit = val[b];
+                    val_word[b] = gold_val[b];
+                }
+                //word_t gold_val = val_arr[index + key_offset];
+                if(val_word != gold_val)
+                    std::cout << "Calculated value " << std::dec << std::bitset<32>(val_word) << " Golden value " << gold_val << " for index " << std::dec << index << std::endl;
+                if((index + 1) % key_length == 0 && index != 0)
                     val_counter++;
             }
         }

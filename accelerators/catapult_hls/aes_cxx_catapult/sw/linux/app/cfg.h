@@ -37,7 +37,7 @@ const unsigned batch    = BATCH;
 
 struct aes_cxx_catapult_access aes_cxx_cfg_000[] = {
     {
-         /* <<--descriptor-->> */
+      /* <<--descriptor-->> */
      .oper_mode = OPER_MODE,
      .encryption = ENCRYPTION,
      .key_bytes = KEY_BYTES,

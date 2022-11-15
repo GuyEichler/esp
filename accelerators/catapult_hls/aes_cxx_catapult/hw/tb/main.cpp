@@ -95,6 +95,9 @@ CCS_MAIN(int argc, char **argv) {
     // Iterate over test length
     unsigned idx = 0;
 
+    //comment if want batching
+    for (/*unsigned idx = 0*/; idx < 10; idx++) {
+
         ESP_REPORT_INFO(VON, "-----------------");
 
         conf_info_data.oper_mode = 1; //ECB_OPERATION_MODE;
@@ -106,7 +109,7 @@ CCS_MAIN(int argc, char **argv) {
         conf_info_data.iv_bytes = 0; // 0 for ECB
         conf_info_data.aad_bytes = 0; // 0 for ECB
         conf_info_data.tag_bytes = 0; // 0 for ECB
-        conf_info_data.batch = 10;
+        conf_info_data.batch = 1;
 
         unsigned key_words = raw_encrypt_key_words[idx];
         unsigned in_words = raw_encrypt_plaintext_words[idx];
@@ -114,7 +117,7 @@ CCS_MAIN(int argc, char **argv) {
         unsigned iv_words = 0; // 0 for ECB
         unsigned aad_words = 0; // 0 for ECB
         unsigned tag_words = 0; // 0 for ECB
-        unsigned batch = 10;
+        unsigned batch = 1;
 
         ESP_REPORT_INFO(VON, "Test index: %u", idx);
         ESP_REPORT_INFO(VON, "Configuration:");
@@ -130,7 +133,8 @@ CCS_MAIN(int argc, char **argv) {
         // Pass configuration to the accelerator
         conf_info.write(conf_info_data);
 
-    for (/*unsigned idx = 0*/; idx < batch; idx++) {
+        //Uncomment if want batching
+    // for (/*unsigned idx = 0*/; idx < batch; idx++) {
 
         // DMA word
         // |<--- 0 --->|<--- 1 --->|
@@ -164,7 +168,7 @@ CCS_MAIN(int argc, char **argv) {
 
             dma_read_chnl.write(data_ac);
         }
-    }
+    // } //uncomment if want batching
 
 
         // // Pass configuration to the accelerator
@@ -180,7 +184,8 @@ CCS_MAIN(int argc, char **argv) {
         // Fetch outputs from the accelerator
         while (!dma_write_chnl.available(batch*out_words/2)) {} // Testbench stalls until data ready
 
-    for (idx = 0; idx < batch; idx++) {
+    //uncomment if want batching
+    // for (idx = 0; idx < batch; idx++) {
 
         for (unsigned i = 0; i < out_words; i+=2) {
             ac_int<DMA_WIDTH, false> data = dma_write_chnl.read().template slc<DMA_WIDTH>(0);

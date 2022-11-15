@@ -8,5 +8,6 @@
     <param name="iv_bytes" desc="iv_bytes" />
     <param name="aad_bytes" desc="aad_bytes" />
     <param name="tag_bytes" desc="tag_bytes" />
+    <param name="batch" desc="batch" />
   </accelerator>
 </sld>

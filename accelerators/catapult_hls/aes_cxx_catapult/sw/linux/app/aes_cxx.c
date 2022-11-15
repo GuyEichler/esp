@@ -47,9 +47,9 @@ const unsigned array_size[12] = {16, 32, 48, 64, 80, 96, 112, 128, 144};
 /* User-defined code */
 static int validate_buffer(token_t *out, token_t *gold, unsigned indx)
 {
-    /* int i; */
-    int j;
-    unsigned errors = 0;
+	/* int i; */
+	int j;
+	unsigned errors = 0;
 
     printf("INFO:  gold output data @%p\n", gold);
     printf("INFO:       output data @%p\n", out);
@@ -77,8 +77,8 @@ static int validate_buffer(token_t *out, token_t *gold, unsigned indx)
 /* User-defined code */
 static void init_buffer(token_t *in, token_t * gold, token_t *out, unsigned indx)
 {
-    int i;
-    int j;
+	int i;
+	int j;
 
     printf("INFO: raw_encrypt_plaintext_words[%u] %u\n", indx, ecb_raw_encrypt_plaintext_words[indx]);
     printf("INFO: ecb_raw_encrypt_ciphertext_words[%u] %u\n", indx, ecb_raw_encrypt_ciphertext_words[indx]);
@@ -150,9 +150,9 @@ int main(int argc, char **argv)
     unsigned errors_0 = 0;
     unsigned errors_1 = 0;
 
-    token_t *gold;
-    token_t *buf_0;
-    /* token_t *buf_1; */
+	token_t *gold;
+	token_t *buf_0;
+	/* token_t *buf_1; */
 
     printf("INFO:   sizeof(token_t) = %lu\n", sizeof(token_t));
 

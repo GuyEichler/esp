@@ -30,15 +30,15 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 128;
+const int32_t key_length = 32;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
-const int32_t key_batch = 20;
-const int32_t key_num = 15;
-const int32_t val_num = 0;
+const int32_t key_batch = 2;
+const int32_t key_num = 1;
+const int32_t val_num = 1;
 const float Rs = R * std;
 
 static unsigned in_words_adj;
@@ -80,10 +80,11 @@ static int validate_buf(token_t *out, token_t *gold)
 	unsigned errors = 0;
 	int skip = 0;
 	int key_counter = 0;
+	int val_counter = 0;
 
 	for (i = 0; i < key_batch; i++)
 		for (j = 0; j < key_length; j++){
-			if(key_counter == key_num) break;
+                        if(key_counter != key_num){
 			unsigned index = i * out_words_adj + j;
 			/* token_t val = out[index - skip]; */
                         int bit = (index - skip) % 32;
@@ -95,8 +96,7 @@ static int validate_buf(token_t *out, token_t *gold)
 			unsigned reduce = (ceil((float)skip/key_length));
 			if(gold_val != 3){
 				if(!(i == key_batch - reduce && (j > skip - 1) )){
-					printf("Calculated value %x Golden value %d for index %d \n",
-						val, gold_val, (index-skip));
+					printf("Calculated value %x Golden value %d for index %d \n", val, gold_val, (index-skip));
 					if (gold_val != val){
 						errors++;
 						printf("ERROR\n");
@@ -116,6 +116,16 @@ static int validate_buf(token_t *out, token_t *gold)
 					printf("0x%x ", out[word-k]);
                                 printf("]\n\n");
 			}
+                        }
+			else if(val_counter != val_num){
+                                unsigned index = i * out_words_adj + j - skip;
+                                token_t val = out[index];
+                                token_t gold_val = (token_t) float_to_fixed32(val_arr[index], 12);
+                                if(val != gold_val)
+					printf("Calculated value %x Golden value %x for index %d \n", val, gold_val, index);
+                                if((index + 1) % key_length == 0 && index != 0)
+                                        val_counter++;
+                        }
 		}
 
 	return errors;

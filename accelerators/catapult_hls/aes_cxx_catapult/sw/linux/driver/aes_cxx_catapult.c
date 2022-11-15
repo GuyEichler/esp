@@ -20,6 +20,7 @@
 #define AES_CXX_IV_BYTES_REG 0x50
 #define AES_CXX_AAD_BYTES_REG 0x54
 #define AES_CXX_TAG_BYTES_REG 0x58
+#define AES_CXX_BATCH_REG 0x5C
 
 struct aes_cxx_catapult_device {
 	struct esp_device esp;
@@ -59,6 +60,7 @@ static void aes_cxx_prep_xfer(struct esp_device *esp, void *arg)
 	iowrite32be(a->iv_bytes, esp->iomem + AES_CXX_IV_BYTES_REG);
 	iowrite32be(a->aad_bytes, esp->iomem + AES_CXX_AAD_BYTES_REG);
 	iowrite32be(a->tag_bytes, esp->iomem + AES_CXX_TAG_BYTES_REG);
+	iowrite32be(a->batch, esp->iomem + AES_CXX_BATCH_REG);
 	iowrite32be(a->src_offset, esp->iomem + SRC_OFFSET_REG);
 	iowrite32be(a->dst_offset, esp->iomem + DST_OFFSET_REG);
 
@@ -66,8 +68,8 @@ static void aes_cxx_prep_xfer(struct esp_device *esp, void *arg)
 
 static bool aes_cxx_xfer_input_ok(struct esp_device *esp, void *arg)
 {
-	/* struct softmax_cxx_catapult_device *softmax_cxx = to_softmax_cxx(esp); */
-	/* struct softmax_cxx_catapult_access *a = arg; */
+	/* struct aes_cxx_catapult_device *aes_cxx = to_aes_cxx(esp); */
+	/* struct aes_cxx_catapult_access *a = arg; */
 
 	return true;
 }
@@ -139,4 +141,4 @@ MODULE_DEVICE_TABLE(of, aes_cxx_device_ids);
 
 MODULE_AUTHOR("Giuseppe Di Guglielmo <giuseppe@cs.columbia.edu>");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("softmax_cxx_catapult driver");
+MODULE_DESCRIPTION("aes_cxx_catapult driver");

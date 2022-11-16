@@ -8,7 +8,7 @@
 
 typedef int32_t token_t;
 #define DATA_BITWIDTH 32
-#define N_TESTS 4
+//#define N_TESTS 4
 
 /* <<--params-def-->> */
 // brain_bit:

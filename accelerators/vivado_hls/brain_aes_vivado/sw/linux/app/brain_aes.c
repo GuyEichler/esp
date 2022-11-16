@@ -133,6 +133,7 @@ static int validate_buffer_brain_bit(token_t *out, token_t *gold)
 static void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
 {
 	int i;
+	int j;
 
 	int key_num_words = key_num / N_TESTS;
 	int val_num_words = val_num / N_TESTS;
@@ -259,6 +260,7 @@ static void init_buffer_aes(token_t *in, token_t *gold, token_t *out, unsigned i
 }
 
 
+
 /* User-defined code */
 static void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx)
 {
@@ -266,7 +268,7 @@ static void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *a
 	int i;
 	int j;
 	int key_words = key_length / DATA_BITWIDTH;
-	int val_words = val_num / 4;
+	int val_words = val_num / N_TESTS;
 
 	for (j = 0; j < key_words; j++)
 	{
@@ -277,8 +279,8 @@ static void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *a
 
 	for (i = 0; i < val_words; i++, j++)
 	{
-		in[j] = aes_vals[i];
-		printf("INFO: aes_val[%u] %u\n", i, aes_vals[i]);
+		in[j] = aes_val[i];
+		printf("INFO: aes_val[%u] %u\n", i, aes_val[i]);
 		// printf("INFO: raw_encrypt_plaintext[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
 	}
 
@@ -497,7 +499,7 @@ int main(int argc, char **argv)
 
 	unsigned errors_2 = 0;
 
-	tokent *gold_brain;
+	token_t *gold_brain;
 	token_t *buf_brain;
 	token_t *buf_aes;
 
@@ -519,7 +521,7 @@ int main(int argc, char **argv)
 	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_length = key_length;
 	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_batch = key_batch;
 	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
-	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_val = key_val;
+	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
 
 	printf("\n====== %s ======\n\n", cfg_brain_bit_000[0].devname);
 	/* <<--print-params-->> */
@@ -543,7 +545,7 @@ int main(int argc, char **argv)
 	//token_t aes_plain[4*8];
 
 
-	init_parameters_aes_from_brain(val_num/4);
+	init_parameters_aes_from_brain(val_num/N_TESTS);
 
 	buf_aes = (token_t *)esp_alloc(size_bytes);
 	cfg_aes_000[0].hw_buf = buf_aes;
@@ -554,7 +556,7 @@ int main(int argc, char **argv)
 
 	/* init_buffer_aes_from_brain(buf_aes, &buf_brain[out_offset], i); */
 
-	int in_bytes_aes = (val_num / N_TESTS) / sizeof(token_t);
+	int in_bytes_aes = (val_num / N_TESTS) * sizeof(token_t);
 
 	((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes = in_bytes_aes;
 

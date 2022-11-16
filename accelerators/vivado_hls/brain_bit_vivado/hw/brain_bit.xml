@@ -9,5 +9,6 @@
     <param name="avg" desc="avg" />
     <param name="key_num" desc="key_num" />
     <param name="val_num" desc="val_num" />
+    <param name="tot_iter" desc="tot_iter" />
   </accelerator>
 </sld>

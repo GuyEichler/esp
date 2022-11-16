@@ -67,6 +67,7 @@ void store(out_dma_word_t *out,
 	 const unsigned key_batch,
            const unsigned key_num,
            const unsigned val_num,
+           const unsigned tot_iter,
          bool &is_output_ready,
          unsigned &keys_done,
          bool &is_keys,
@@ -84,7 +85,7 @@ store_data:
         val_length = round_up(val_num, VALUES_PER_WORD);
 
     // const unsigned length = round_up(key_length >> DATA_BITWIDTH_LOG, VALUES_PER_WORD);
-    const unsigned store_offset = round_up(key_length, VALUES_PER_WORD) * key_batch;
+    const unsigned store_offset = round_up(key_length * key_batch * tot_iter, VALUES_PER_WORD);
     const unsigned out_offset = store_offset;
 
     const unsigned offset = keys_done * length;
@@ -330,6 +331,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             const unsigned conf_info_key_batch,
             const unsigned conf_info_key_num,
             const unsigned conf_info_val_num,
+            const unsigned conf_info_tot_iter,
             dma_info_t &load_ctrl, dma_info_t &store_ctrl)
 {
 
@@ -343,13 +345,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         const unsigned key_batch = conf_info_key_batch;
         const unsigned key_num = conf_info_key_num;
         const unsigned val_num = conf_info_val_num;
+        const unsigned tot_iter = conf_info_tot_iter;
 
-        bool is_output_ready = false;
-        bool load_values = true;
-
-        // unsigned add = 0;
-        unsigned keys_done = 0;
-        unsigned values_done = 0;
 
         //Memories
         // static word_t _inbuff[SIZE_IN_CHUNK_DATA];
@@ -357,131 +354,144 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         // static ap_uint<32> _outbuff_bit[SIZE_OUT_BIT_DATA];
         static ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA];
 
-        unsigned b = 0;
 
-        bool is_keys = true;
+        for(unsigned i = 0; i < tot_iter; i++){
 
-    // Keys loop
-    keys:
-    // for (unsigned b = 0; b < key_batch + add; b++)
-    while(keys_done != key_num)
-    {
+            bool is_output_ready = false;
+            bool load_values = true;
+
+            // unsigned add = 0;
+            unsigned keys_done = 0;
+            unsigned values_done = 0;
+
+            unsigned b = 0;
+
+            bool is_keys = true;
+
+            // Keys loop
+        keys:
+            // for (unsigned b = 0; b < key_batch + add; b++)
+            while(keys_done != key_num)
+            {
 
 //#pragma HLS loop_tripcount max=1
 
-    go:
-        load(_inbuff, in1,
-            /* <<--args-->> */
-            avg,
-            key_length,
-            std,
-            R,
-            L,
-            key_batch,
-            key_num,
-            load_values,
-             is_keys,
-            load_ctrl, b);
+            go:
+                load(_inbuff, in1,
+                     /* <<--args-->> */
+                     avg,
+                     key_length,
+                     std,
+                     R,
+                     L,
+                     key_batch,
+                     key_num,
+                     load_values,
+                     is_keys,
+                     load_ctrl, i * key_batch + b);
 
-        compute(_inbuff,
-            /* <<--args-->> */
-            avg,
-            key_length,
-            std,
-            R,
-            L,
-            key_batch,
-            key_num,
-            is_output_ready,
-            load_values,
-            // add,
-            _outbuff_bit);
+                compute(_inbuff,
+                        /* <<--args-->> */
+                        avg,
+                        key_length,
+                        std,
+                        R,
+                        L,
+                        key_batch,
+                        key_num,
+                        is_output_ready,
+                        load_values,
+                        // add,
+                        _outbuff_bit);
 
-            store(out,
-            /* <<--args-->> */
-            avg,
-            key_length,
-            std,
-            R,
-            L,
-            key_batch,
-            key_num,
-            val_num,
-            is_output_ready,
-            keys_done,
-            is_keys,
-            store_ctrl, //b,
-            _outbuff_bit);
+                store(out,
+                      /* <<--args-->> */
+                      avg,
+                      key_length,
+                      std,
+                      R,
+                      L,
+                      key_batch,
+                      key_num,
+                      val_num,
+                      tot_iter,
+                      is_output_ready,
+                      keys_done,
+                      is_keys,
+                      store_ctrl, //b,
+                      _outbuff_bit);
 
-            if(load_values)
-                b = b + 1;
+                if(load_values)
+                    b = b + 1;
 
 #ifndef __SYNTHESIS__
-        if(keys_done == key_num){
-            std::cout << "TOP : Enough keys were generated " << std::endl;
-        }
+                if(keys_done == key_num){
+                    std::cout << "TOP : Enough keys were generated " << std::endl;
+                }
 #endif
 
-    }
+            }
 
-    values_done = keys_done;//start from keys_done for offsetting memory
-    is_keys = false;
+            values_done = keys_done;//start from keys_done for offsetting memory
+            is_keys = false;
 
-    //values loop
-    values:
-    // for (unsigned b_v = 0; b_v < val_num; b_v++)
-    // while(values_done != val_num)
-    {
+            //values loop
+        values:
+            // for (unsigned b_v = 0; b_v < val_num; b_v++)
+            // while(values_done != val_num)
+            if(val_num != 0)
+            {
 
 // #pragma HLS loop_tripcount max=1024
 
     // go_2:
 
-        bool load_values_raw = true;
-        bool is_output_raw = true;
+                bool load_values_raw = true;
+                bool is_output_raw = true;
 
-        load(_inbuff, in1,
-            /* <<--args-->> */
-            avg,
-            key_length,
-            std,
-            R,
-            L,
-            key_batch,
-            val_num,
-            load_values_raw,
-             is_keys,
-            load_ctrl, b);
+                load(_inbuff, in1,
+                     /* <<--args-->> */
+                     avg,
+                     key_length,
+                     std,
+                     R,
+                     L,
+                     key_batch,
+                     val_num,
+                     load_values_raw,
+                     is_keys,
+                     load_ctrl, i * key_batch + b);
 
-        compute_val(_inbuff,
-            /* <<--args-->> */
-            avg,
-            key_length,
-            std,
-            R,
-            L,
-            key_batch,
-            val_num,
-            _outbuff_bit);
+                compute_val(_inbuff,
+                            /* <<--args-->> */
+                            avg,
+                            key_length,
+                            std,
+                            R,
+                            L,
+                            key_batch,
+                            val_num,
+                            _outbuff_bit);
 
-        store(out,
-            /* <<--args-->> */
-            avg,
-            key_length,
-            std,
-            R,
-            L,
-            key_batch,
-            key_num,
-            val_num,
-            is_output_raw,
-            // values_done,
-            keys_done,
-            is_keys,
-            store_ctrl, //b,
-            _outbuff_bit);
+                store(out,
+                      /* <<--args-->> */
+                      avg,
+                      key_length,
+                      std,
+                      R,
+                      L,
+                      key_batch,
+                      key_num,
+                      val_num,
+                      tot_iter,
+                      is_output_raw,
+                      // values_done,
+                      keys_done,
+                      is_keys,
+                      store_ctrl, //b,
+                      _outbuff_bit);
 
-            //b = b + 1;
+                //b = b + 1;
 
 #ifndef __SYNTHESIS__
         // if(values_done == val_num+key_num){
@@ -490,5 +500,6 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             std::cout << "TOP : Values were generated " << std::endl;
 #endif
 
-    }
+            }
+        }
 }

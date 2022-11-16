@@ -19,7 +19,8 @@ typedef int32_t token_t;
 #define L_val 1500
 #define KEY_BATCH 20
 #define KEY_NUM 15
-#define VAL_NUM 0
+#define VAL_NUM 1
+#define TOT_ITER 1
 // aes:
 #define OPER_MODE 1
 #define ENCRYPTION 1
@@ -43,6 +44,7 @@ const int32_t L = L_val;
 int32_t key_batch = KEY_BATCH;
 int32_t key_num = KEY_NUM;
 int32_t val_num = VAL_NUM;
+int32_t tot_iter = TOT_ITER;
 const float Rs = R * std;
 // aes:
 const unsigned oper_mode = OPER_MODE;
@@ -67,6 +69,7 @@ struct brain_bit_vivado_access brain_bit_cfg_000[] = {
 		.key_batch = KEY_BATCH,
 		.key_num = KEY_NUM,
 		.val_num = VAL_NUM,
+		.tot_iter = TOT_ITER,
 		.src_offset = 0,
 		.dst_offset = 0,
 		.esp.coherence = ACC_COH_NONE,

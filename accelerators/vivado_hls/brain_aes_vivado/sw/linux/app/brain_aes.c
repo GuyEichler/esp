@@ -129,7 +129,7 @@ static int validate_buffer_brain_bit(token_t *out, token_t *gold)
 	return errors;
 }
 
-
+c
 static void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
 {
 	int i;

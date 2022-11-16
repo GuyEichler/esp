@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
     const unsigned key_batch = 20;
     const unsigned key_num = 15;
     const unsigned val_num = 16;
+    const unsigned tot_iter = 1;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -176,6 +177,7 @@ int main(int argc, char **argv) {
         key_batch,
         key_num,
         val_num,
+        tot_iter,
         load, store);
 
     // Validate

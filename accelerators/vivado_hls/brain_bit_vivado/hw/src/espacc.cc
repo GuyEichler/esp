@@ -15,16 +15,18 @@ void load(word_t _inbuff[SIZE_IN_CHUNK_DATA], dma_word_t *in1,
 	 const word_t R,
 	 const unsigned L,
 	 const unsigned key_batch,
-          const unsigned key_num,
+          const unsigned val_num,
           bool &load_values,
+          bool &is_keys,
 	  dma_info_t &load_ctrl, int batch)
 {
 load_data:
 
     const unsigned length = round_up(key_length, VALUES_PER_WORD);
     const unsigned index = length * batch;
+    const unsigned val_length = round_up(val_num, VALUES_PER_WORD);
 
-    unsigned dma_length = length / VALUES_PER_WORD;
+    unsigned dma_length = is_keys ? length / VALUES_PER_WORD : val_length / VALUES_PER_WORD;
     unsigned dma_index = index / VALUES_PER_WORD;
 
     if(load_values){
@@ -36,6 +38,11 @@ load_data:
 #ifndef __SYNTHESIS__
 
         std::cout << "LOAD : Loading new values " << std::endl;
+        std::cout << "LOAD : dma_index "
+                  << dma_index
+                  << " dma_length "
+                  << dma_length
+                  << std::endl;
 
 #endif
 
@@ -59,6 +66,7 @@ void store(out_dma_word_t *out,
 	 const unsigned L,
 	 const unsigned key_batch,
            const unsigned key_num,
+           const unsigned val_num,
          bool &is_output_ready,
          unsigned &keys_done,
          bool &is_keys,
@@ -68,11 +76,12 @@ void store(out_dma_word_t *out,
 store_data:
 
     unsigned length;
+    unsigned val_length;
 
-    if(is_keys)
+    // if(is_keys)
         length = round_up(key_length >> DATA_BITWIDTH_LOG, VALUES_PER_WORD);
-    else
-        length = round_up(key_length, VALUES_PER_WORD);
+    // else
+        val_length = round_up(val_num, VALUES_PER_WORD);
 
     // const unsigned length = round_up(key_length >> DATA_BITWIDTH_LOG, VALUES_PER_WORD);
     const unsigned store_offset = round_up(key_length, VALUES_PER_WORD) * key_batch;
@@ -81,7 +90,7 @@ store_data:
     const unsigned offset = keys_done * length;
     const unsigned index = out_offset + offset;
 
-    unsigned dma_length = length / VALUES_PER_WORD;
+    unsigned dma_length = is_keys ? (length / VALUES_PER_WORD) : (val_length / VALUES_PER_WORD);
     unsigned dma_index = index / VALUES_PER_WORD;
 
     if(is_output_ready){
@@ -271,15 +280,15 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
 }
 
 void compute_val(word_t _inbuff[SIZE_IN_CHUNK_DATA],
-             /* <<--compute-params-->> */
-	 const word_t avg,
-	 const unsigned key_length,
-	 const word_t std,
-	 const word_t R,
-	 const unsigned L,
-	 const unsigned key_batch,
-            const unsigned key_num,
-         ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
+                 /* <<--compute-params-->> */
+                 const word_t avg,
+                 const unsigned key_length,
+                 const word_t std,
+                 const word_t R,
+                 const unsigned L,
+                 const unsigned key_batch,
+                 const unsigned val_num,
+                 ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
 {
 
     // const unsigned in_length = round_up(key_length, VALUES_PER_WORD);
@@ -291,20 +300,20 @@ void compute_val(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     // static unsigned input_offset = 0;
     // unsigned i;
 
-ASSIGN_LOOP:for(unsigned i = 0; i < key_length; i++){
+ASSIGN_LOOP:for(unsigned i = 0; i < val_num; i++){
         word_t word = _inbuff[i];
     BIT_LOOP:for(unsigned j = 0; j < DATA_BITWIDTH; j++){
             bool bit = word[j];
             _outbuff_bit[i](j,j) = word[j];
         }
 
-#ifndef __SYNTHESIS__
-        std::cout << "COMPUTE VAL : Passed "
-                  << std::bitset<32>(_outbuff_bit[i])
-                  << " Received "
-                  << word.to_string()
-                  << std::endl;
-#endif
+// #ifndef __SYNTHESIS__
+//         std::cout << "COMPUTE VAL : Passed "
+//                   << std::bitset<32>(_outbuff_bit[i])
+//                   << " Received "
+//                   << word.to_string()
+//                   << std::endl;
+// #endif
 
     }
 
@@ -371,6 +380,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             key_batch,
             key_num,
             load_values,
+             is_keys,
             load_ctrl, b);
 
         compute(_inbuff,
@@ -396,6 +406,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             L,
             key_batch,
             key_num,
+            val_num,
             is_output_ready,
             keys_done,
             is_keys,
@@ -418,13 +429,13 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 
     //values loop
     values:
-    for (unsigned b_v = 0; b_v < val_num; b_v++)
+    // for (unsigned b_v = 0; b_v < val_num; b_v++)
     // while(values_done != val_num)
     {
 
-#pragma HLS loop_tripcount max=1024
+// #pragma HLS loop_tripcount max=1024
 
-    go_2:
+    // go_2:
 
         bool load_values_raw = true;
         bool is_output_raw = true;
@@ -439,7 +450,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             key_batch,
             val_num,
             load_values_raw,
-            load_ctrl, b_v+b);
+             is_keys,
+            load_ctrl, b);
 
         compute_val(_inbuff,
             /* <<--args-->> */
@@ -449,10 +461,10 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             R,
             L,
             key_batch,
-            key_num,
+            val_num,
             _outbuff_bit);
 
-            store(out,
+        store(out,
             /* <<--args-->> */
             avg,
             key_length,
@@ -461,8 +473,10 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             L,
             key_batch,
             key_num,
+            val_num,
             is_output_raw,
-            values_done,
+            // values_done,
+            keys_done,
             is_keys,
             store_ctrl, //b,
             _outbuff_bit);
@@ -470,9 +484,10 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             //b = b + 1;
 
 #ifndef __SYNTHESIS__
-        if(values_done == val_num+key_num){
-            std::cout << "TOP : Enough values were generated " << std::endl;
-        }
+        // if(values_done == val_num+key_num){
+        //     std::cout << "TOP : Enough values were generated " << std::endl;
+        // }
+            std::cout << "TOP : Values were generated " << std::endl;
 #endif
 
     }

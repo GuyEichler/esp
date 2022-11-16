@@ -7,6 +7,8 @@
 #include "brain_aes_vivado.h"
 
 typedef int32_t token_t;
+#define DATA_BITWIDTH 32
+#define N_TESTS 4
 
 /* <<--params-def-->> */
 // brain_bit:
@@ -32,15 +34,15 @@ typedef int32_t token_t;
 // brain_bit:
 const float avg = AVG;
 unsigned *avg_ptr = (unsigned *)&avg;
-const int32_t key_length = KEY_LENGTH;
+int32_t key_length = KEY_LENGTH;
 const float std = STD;
 unsigned *std_ptr = (unsigned *)&std;
 const float R = R_val;
 unsigned *R_ptr = (unsigned *)&R;
 const int32_t L = L_val;
-const int32_t key_batch = KEY_BATCH;
-const int32_t key_num = KEY_NUM;
-const int32_t val_num = VAL_NUM;
+int32_t key_batch = KEY_BATCH;
+int32_t key_num = KEY_NUM;
+int32_t val_num = VAL_NUM;
 const float Rs = R * std;
 // aes:
 const unsigned oper_mode = OPER_MODE;

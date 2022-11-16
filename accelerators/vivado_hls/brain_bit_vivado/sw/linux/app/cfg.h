@@ -7,6 +7,7 @@
 #include "brain_bit_vivado.h"
 
 typedef int32_t token_t;
+#define DATA_BITWIDTH 32
 
 /* <<--params-def-->> */
 #define AVG 3.0677295382679177

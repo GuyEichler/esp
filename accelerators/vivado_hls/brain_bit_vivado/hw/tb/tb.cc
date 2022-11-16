@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     const unsigned L = 1500;
     const unsigned key_batch = 20;
     const unsigned key_num = 15;
-    const unsigned val_num = 2;
+    const unsigned val_num = 16;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -223,59 +223,83 @@ int main(int argc, char **argv) {
 
     int val_counter = 0;
     word_t* outbuff_val = (word_t*) &outbuff_bit[0];
+    bool done = false;
+    unsigned offset = 0;
 
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++){
             if(key_counter != key_num){
-            unsigned index = i * out_words_adj + j;
-            // word_t val = outbuff[index - skip];
-            unsigned bit = (index - skip) % 32;
-            unsigned word = (index - skip) >> 5;
-            ap_uint<1> val = outbuff_bit[word][bit];
-            // std::cout << " word is " << std::bitset<32>(outbuff_bit[word])
-            //           << " word " << word
-            //           << " bit " << bit
-            //           << std::endl;
-            word_t gold_val = outbuff_gold[index];
-            if(gold_val != 3){
-                if(!(i == key_batch - (ceil((float)skip/key_length)) && (j > skip - 1) )){
-                    std::cout << "Calculated value " << std::dec << val << " Golden value " << outbuff_gold[index] << " for index " << std::dec << index - skip << std::endl;
-                    if (val != gold_val){
-                        errors++;
-                        std::cout << "ERROR" << std::endl;
+                unsigned index = i * out_words_adj + j;
+                // word_t val = outbuff[index - skip];
+                unsigned bit = (index - skip) % 32;
+                unsigned word = (index - skip) >> 5;
+                ap_uint<1> val = outbuff_bit[word][bit];
+                // std::cout << " word is " << std::bitset<32>(outbuff_bit[word])
+                //           << " word " << word
+                //           << " bit " << bit
+                //           << std::endl;
+                word_t gold_val = outbuff_gold[index];
+                if(gold_val != 3){
+                    if(!(i == key_batch - (ceil((float)skip/key_length)) && (j > skip - 1) )){
+                        std::cout << "Calculated value " << std::dec << val << " Golden value " << outbuff_gold[index] << " for index " << std::dec << index - skip << std::endl;
+                        if (val != gold_val){
+                            errors++;
+                            std::cout << "ERROR" << std::endl;
+                        }
                     }
                 }
-            }
-            else{
-                std::cout << "SKIPPING" << std::endl;
-                skip += 1;
-            }
+                else{
+                    std::cout << "SKIPPING" << std::endl;
+                    skip += 1;
+                }
 
-            if((index - skip + 1) % key_length == 0 && index != 0){
-                key_counter++;
-                std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
-                std::cout << "\nKEY IS: [ ";
+                if((index - skip + 1) % key_length == 0 && index != 0){
+                    key_counter++;
+                    std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
+                    std::cout << "\nKEY IS: [ ";
                     for(int k = key_length / 32 - 1; k >= 0; k--)
                         std::cout << std::hex << outbuff_bit[word-k] << " ";
                     std::cout << "]\n" << std::endl;
-            }
-            }
-            else if(val_counter != val_num){
-                unsigned index = i * out_words_adj + j - skip;
-                ap_uint<32> val = outbuff_bit[index];
-                word_t val_word = 0;
-                word_t gold_val = val_arr[index + key_offset];
-                for(int b = 0; b < DATA_BITWIDTH; b++){
-                    ap_uint<1> val_bit = val[b];
-                    val_word[b] = gold_val[b];
                 }
-                //word_t gold_val = val_arr[index + key_offset];
-                if(val_word != gold_val)
-                    std::cout << "Calculated value " << std::dec << std::bitset<32>(val_word) << " Golden value " << gold_val << " for index " << std::dec << index << std::endl;
-                if((index + 1) % key_length == 0 && index != 0)
-                    val_counter++;
             }
+            else if(!done){
+                done = true;
+                offset = i * out_words_adj + j - skip;
+            }
+            // else if(val_counter != val_num){
+            //     unsigned index = i * out_words_adj + j - skip;
+            //     ap_uint<32> val = outbuff_bit[index];
+            //     word_t val_word = 0;
+            //     word_t gold_val = val_arr[index + key_offset];
+            //     for(int b = 0; b < DATA_BITWIDTH; b++){
+            //         ap_uint<1> val_bit = val[b];
+            //         val_word[b] = val_bit;
+            //     }
+            //     //word_t gold_val = val_arr[index + key_offset];
+            //     if(val_word != gold_val)
+            //         std::cout << "Calculated value " << std::dec << std::bitset<32>(val_word) << " Golden value " << gold_val << " for index " << std::dec << index << std::endl;
+            //     if((index + 1) % key_length == 0 && index != 0)
+            //         val_counter++;
+            // }
         }
+
+    int index_offset = key_num * key_length / DATA_BITWIDTH;
+
+    for(int i = 0; i < val_num; i++){
+        unsigned index = index_offset + i + DATA_BITWIDTH / key_length;
+        ap_uint<32> val = outbuff_bit[index];
+        word_t val_word = 0;
+        word_t gold_val = val_arr[offset + i];
+        for(int b = 0; b < DATA_BITWIDTH; b++){
+            ap_uint<1> val_bit = val[b];
+            val_word[b] = val_bit;
+        }
+        //word_t gold_val = val_arr[index + key_offset];
+        if(val_word != gold_val)
+            std::cout << "Calculated value " << std::dec << val_word << " Golden value " << gold_val << " for index " << std::dec << index << std::endl;
+    }
+
+
 
 
     float total = 100 * (float) errors / (key_length*key_batch);

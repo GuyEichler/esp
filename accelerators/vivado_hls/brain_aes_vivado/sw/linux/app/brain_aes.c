@@ -64,64 +64,88 @@ static int validate_buffer_brain_bit(token_t *out, token_t *gold)
 
 	int skip = 0;
 	key_counter = 0;
-	int val_counter = 0;
+	/* int val_counter = 0; */
+	int offset = 0;
+	bool done = false;
 
 	for (i = 0; i < key_batch; i++)
-		for (j = 0; j < key_length; j++)
-		{
-			if (key_counter != key_num)
-			{
-				unsigned index = i * out_words_adj + j;
-				/* token_t val = out[index - skip]; */
-				int bit = (index - skip) % 32;
-				int word = (index - skip) >> 5;
-				token_t mask = out[word] >> bit;
-				/* printf("out val is %x for word %d bit %d\n", out[word], word, bit); */
-				token_t val = mask & 1;
-				token_t gold_val = gold[index];
-				unsigned reduce = (ceil((float)skip / key_length));
-				if (gold_val != 3)
-				{
-					if (!(i == key_batch - reduce && (j > skip - 1)))
-					{
-						printf("Calculated value %x Golden value %d for index %d \n",
-							   val, gold_val, (index - skip));
-						if (gold_val != val)
-						{
-							errors++;
-							printf("ERROR\n");
-						}
+		for (j = 0; j < key_length; j++){
+                        if(key_counter != key_num){
+                        unsigned index = i * out_words_adj + j;
+                        /* token_t val = out[index - skip]; */
+			int bit = (index - skip) % 32;
+			int word = (index - skip) >> 5;
+			token_t mask = out[word] >> bit;
+			/* printf("out val is %x for word %d bit %d\n", out[word], word, bit); */
+			token_t val = mask & 1;
+			token_t gold_val = gold[index];
+			unsigned reduce = (ceil((float)skip/key_length));
+			if(gold_val != 3){
+				if(!(i == key_batch - reduce && (j > skip - 1) )){
+					if (gold_val != val){
+                                                printf("Calculated value %x Golden value %d for index %d \n",val, gold_val, (index-skip));
+						errors++;
+						printf("ERROR\n");
 					}
 				}
-				else
-				{
-					printf("SKIPPING\n");
-					skip += 1;
-				}
-
-				if ((index - skip + 1) % key_length == 0 && index != 0)
-				{
-					key_counter++;
-					printf("\n----------KEY %d DONE----------\n", key_counter);
-					printf("\nKEY IS: [ ");
-					for (int k = key_length / 32 - 1; k >= 0; k--)
-						printf("0x%x ", out[word - k]);
-					printf("]\n\n");
-				}
 			}
-			else if (val_counter != val_num)
-			{
-				unsigned index = i * out_words_adj + j - skip;
-				token_t val = out[index];
-				token_t gold_val = (token_t)float_to_fixed32(val_arr[index], 12);
-				if (val != gold_val)
-					printf("Calculated value %x Golden value %x for index %d \n", val, gold_val, index);
-				if ((index + 1) % key_length == 0 && index != 0)
-					val_counter++;
+			else{
+				printf("SKIPPING\n");
+				skip += 1;
+			}
+
+			if((index - skip + 1) % key_length == 0 && index != 0){
+				key_counter++;
+				printf("\n----------KEY %d DONE----------\n", key_counter);
+				printf("\nKEY IS: [ ");
+				for(int k = key_length / 32 - 1; k >= 0; k--)
+					printf("0x%x ", out[word-k]);
+				printf("]\n\n");
+			}
+                        }
+			else if(!done){
+				done = true;
+				offset = i * out_words_adj + j - skip;
 			}
 		}
 
+	int index_offset = key_num * key_length / DATA_BITWIDTH;
+
+	for(int i = 0; i < val_num; i++){
+		unsigned index = index_offset + i + DATA_BITWIDTH / key_length;
+                token_t val = out[index];
+                token_t gold_val = (token_t) float_to_fixed32(val_arr[offset+i], 12);
+
+                if(val != gold_val){
+			printf("Calculated value %x Golden value %x for index %d \n", val, gold_val, index);
+			printf("ERROR\n");
+			errors += key_length;
+		}
+                /* if((index + 1) % key_length == 0 && index != 0) */
+                /*         val_counter++; */
+         }
+
+
 	return errors;
+}
+
+
+static void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
+{
+	int i;
+
+	int key_num_words = key_num / N_TESTS;
+	int val_num_words = val_num / N_TESTS;
+
+	for (i = 0; i < key_num_words; i++)
+	{
+		in_aes[i] = out_brain[i];
+	}
+	for (j = 0; j < val_num_words; j++)
+	{
+		in_aes[i+j] = out_brain[j + i];
+	}
+
 }
 
 /* User-defined code */
@@ -234,6 +258,38 @@ static void init_buffer_aes(token_t *in, token_t *gold, token_t *out, unsigned i
 	}
 }
 
+
+/* User-defined code */
+static void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx)
+{
+
+	int i;
+	int j;
+	int key_words = key_length / DATA_BITWIDTH;
+	int val_words = val_num / 4;
+
+	for (j = 0; j < key_words; j++)
+	{
+		in[j] = aes_key[j];
+		printf("INFO: aes_key[%u] %u\n", j, aes_key[j]);
+		// printf("INFO: raw_encrypt_key[%u][%u] | %x\n", indx, j, in[j]);
+	}
+
+	for (i = 0; i < val_words; i++, j++)
+	{
+		in[j] = aes_vals[i];
+		printf("INFO: aes_val[%u] %u\n", i, aes_vals[i]);
+		// printf("INFO: raw_encrypt_plaintext[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
+	}
+
+	/* for (j = 0; j < ecb_raw_encrypt_ciphertext_words[indx]; j++) */
+	/* { */
+	/* 	gold[j] = ecb_raw_encrypt_ciphertext[indx][j]; */
+	/* 	// printf("INFO: raw_encrypt_ciphertext[%u][%u] %x\n", indx, j, gold[j]); */
+	/* } */
+
+}
+
 /* User-defined code */
 static void init_parameters_aes(unsigned indx)
 {
@@ -264,6 +320,31 @@ static void init_parameters_aes(unsigned indx)
 	printf("%s: out_offset = %u\n", __func__, out_offset);
 	size_bytes = (out_offset * sizeof(token_t)) + out_size;
 	printf("%s: size = %u\n", __func__, size_bytes);
+}
+
+/* User-defined code */
+static void init_parameters_aes_from_brain(int val_n)
+{
+	in_words = val_n + (key_length / DATA_BITWIDTH);
+	out_words = val_n;
+
+	if (DMA_WORD_PER_BEAT(sizeof(token_t)) == 0)
+	{
+		in_words_adj = in_words;
+		out_words_adj = out_words;
+	}
+	else
+	{
+		in_words_adj = round_up(in_words, DMA_WORD_PER_BEAT(sizeof(token_t)));
+		out_words_adj = round_up(out_words, DMA_WORD_PER_BEAT(sizeof(token_t)));
+	}
+
+	in_len = in_words_adj;
+	out_len = out_words_adj;
+	in_size = in_len * sizeof(token_t);
+	out_size = out_len * sizeof(token_t);
+	out_offset = in_len;
+	size_bytes = (out_offset * sizeof(token_t)) + out_size;
 }
 
 int main(int argc, char **argv)
@@ -313,7 +394,7 @@ int main(int argc, char **argv)
 	/* for(int i = 0; i < out_len; i++) */
 	/* 	out_location[i] = 0; */
 
-	// esp_run(cfg_brain_bit_000, NACC);
+	esp_run(cfg_brain_bit_000, NACC);
 
 	printf("\n  ** DONE **\n");
 
@@ -409,5 +490,89 @@ int main(int argc, char **argv)
 	printf("== End of aes.                              ==\n");
 	printf("==============================================\n");
 
-	return (errors + errors_0 + errors_1);
+
+	printf("==============================================\n");
+	printf("== Start of brain_bit and aes.              ==\n");
+	printf("==============================================\n");
+
+	unsigned errors_2 = 0;
+
+	tokent *gold_brain;
+	token_t *buf_brain;
+	token_t *buf_aes;
+
+        //set brain_bit parameters
+	key_length = 128;
+	key_batch = 20;
+	key_num = N_TESTS;
+	val_num = N_TESTS * 8;
+
+	init_parameters_brain_bit();
+
+	buf_brain = (token_t *)esp_alloc(size);
+	cfg_brain_bit_000[0].hw_buf = buf_brain;
+
+	gold_brain = malloc(out_size);
+
+	init_buffer_brain_bit(buf_brain, gold_brain);
+
+	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_length = key_length;
+	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_batch = key_batch;
+	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
+	((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_val = key_val;
+
+	printf("\n====== %s ======\n\n", cfg_brain_bit_000[0].devname);
+	/* <<--print-params-->> */
+	printf("  .avg = %f\n", avg);
+	printf("  .key_length = %d\n", key_length);
+	printf("  .std = %f\n", std);
+	printf("  .R = %f\n", R);
+	printf("  .L = %d\n", L);
+	printf("  .key_batch = %d\n", key_batch);
+	printf("  .key_num = %d\n", key_num);
+	printf("\n  ** START **\n");
+
+        //Run brain_bit in isolation
+	esp_run(cfg_brain_bit_000, NACC);
+
+	printf("\n  ** DONE **\n");
+
+        //set aes keys to key_length_words * key_num
+	//token_t aes_key[4*4];
+        //set aes plaintext to val_num
+	//token_t aes_plain[4*8];
+
+
+	init_parameters_aes_from_brain(val_num/4);
+
+	buf_aes = (token_t *)esp_alloc(size_bytes);
+	cfg_aes_000[0].hw_buf = buf_aes;
+
+	memset(buf_0, 0, size_bytes);
+
+	set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[out_offset]);
+
+	/* init_buffer_aes_from_brain(buf_aes, &buf_brain[out_offset], i); */
+
+	int in_bytes_aes = (val_num / N_TESTS) / sizeof(token_t);
+
+	((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes = in_bytes_aes;
+
+	printf("\n====== %s ======\n\n", cfg_aes_000[0].devname);
+	/* <<--print-params-->> */
+	printf("  .oper_mode = %d\n", oper_mode);
+	printf("  .encryption = %d\n", encryption);
+	printf("  .key_bytes = %d\n", key_bytes);
+	printf("  .input_bytes = %d\n", input_bytes);
+	printf("  .iv_bytes = %d\n", iv_bytes);
+	printf("  .aad_bytes = %d\n", aad_bytes);
+	printf("  .tag_bytes = %d\n", tag_bytes);
+	printf("  .batch = %d\n", batch);
+	printf("\n  ** START **\n");
+
+	esp_run(cfg_aes_000, NACC);
+
+	printf("\n  ** DONE **\n");
+
+	return (errors + errors_0 + errors_1 + errors_2);
 }

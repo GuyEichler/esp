@@ -151,6 +151,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
             const unsigned key_num,
          bool &is_output_ready,
          bool &load_values,
+         unsigned &keys_done,
          // unsigned &add,
          ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
 {
@@ -250,8 +251,8 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
                 std::cout << "COMPUTE : Input offset is initialized " << std::endl;
 #endif
 
-            }
 
+            }
         }
     }
 
@@ -277,6 +278,16 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
 
 
     }
+
+    if(keys_done == key_num - 1)
+        input_offset = 0;
+
+#ifndef __SYNTHESIS__
+    std::cout << "COMPUTE : END Input offset is " << input_offset << std::endl;
+    std::cout << "COMPUTE : END output idx is " << output_idx << std::endl;
+    std::cout << "COMPUTE : END load_values is " << load_values << std::endl;
+    std::cout << "COMPUTE : END keys_done is " << keys_done << std::endl;
+#endif
 
 }
 
@@ -401,6 +412,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                         key_num,
                         is_output_ready,
                         load_values,
+                        keys_done,
                         // add,
                         _outbuff_bit);
 

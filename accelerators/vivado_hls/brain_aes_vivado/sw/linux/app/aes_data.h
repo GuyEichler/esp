@@ -44,3 +44,20 @@ static unsigned ecb_raw_encrypt_ciphertext[N_TESTS][40] = {
 static unsigned ecb_raw_encrypt_ciphertext_bytes[N_TESTS] = {4*4, 8*4, 12*4, 16*4, 20*4, 24*4, 28*4, 32*4, 36*4, 40*4};
 static unsigned ecb_raw_encrypt_ciphertext_words[N_TESTS] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
 
+
+// for brain_bit + aes
+static unsigned ecb_raw_encrypt_key_test1[1][4] = {
+    {0xedfdb257, 0xcb37cdf1, 0x82c5455b, 0x0c0efebb},
+static unsigned ecb_raw_encrypt_key_bytes_test1[1] = {4*4};
+static unsigned ecb_raw_encrypt_key_words_test1[1] = {4};
+
+static unsigned ecb_raw_encrypt_plaintext_test1[1][4] = {
+    {0x1695fe47, 0x5421cace, 0x3557daca, 0x01f445ff},
+static unsigned ecb_raw_encrypt_plaintext_bytes_test1[1] = {4*4};
+static unsigned ecb_raw_encrypt_plaintext_words_test1[1] = {4};
+
+static unsigned ecb_raw_encrypt_ciphertext_test1[1][4] = {
+    {0xf1faabc3, 0x1b36fac0, 0x631231b6, 0x3a1a2601}};
+static unsigned ecb_raw_encrypt_ciphertext_bytes_test1[1] = {4*4};
+static unsigned ecb_raw_encrypt_ciphertext_words_test1[1] = {4};
+

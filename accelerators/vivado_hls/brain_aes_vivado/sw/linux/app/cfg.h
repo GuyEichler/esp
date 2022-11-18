@@ -47,14 +47,14 @@ int32_t val_num = VAL_NUM;
 int32_t tot_iter = TOT_ITER;
 const float Rs = R * std;
 // aes:
-const unsigned oper_mode = OPER_MODE;
-const unsigned encryption = ENCRYPTION;
-const unsigned key_bytes = KEY_BYTES;
-const unsigned input_bytes = INPUT_BYTES;
-const unsigned iv_bytes = IV_BYTES;
-const unsigned aad_bytes = AAD_BYTES;
-const unsigned tag_bytes = TAG_BYTES;
-const unsigned batch = BATCH;
+unsigned oper_mode = OPER_MODE;
+unsigned encryption = ENCRYPTION;
+unsigned key_bytes = KEY_BYTES;
+unsigned input_bytes = INPUT_BYTES;
+unsigned iv_bytes = IV_BYTES;
+unsigned aad_bytes = AAD_BYTES;
+unsigned tag_bytes = TAG_BYTES;
+unsigned batch = BATCH;
 
 #define NACC 1
 

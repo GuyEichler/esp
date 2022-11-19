@@ -52,5 +52,56 @@ struct aes_cxx_catapult_access {
 #define BRAIN_BIT_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct brain_bit_vivado_access)
 #define AES_CXX_CATAPULT_IOC_ACCESS	_IOW ('S', 0, struct aes_cxx_catapult_access)
 
+typedef int32_t token_t;
+#define DATA_BITWIDTH 32
+//#define N_TESTS 4
+
+/* <<--params-def-->> */
+// brain_bit:
+#define AVG 3.0677295382679177
+#define KEY_LENGTH 128
+#define STD 38.626628825256695
+#define R_val 1.5
+#define L_val 1500
+#define KEY_BATCH 20
+#define KEY_NUM 15
+#define VAL_NUM 1
+#define TOT_ITER 1
+// aes:
+#define OPER_MODE 1
+#define ENCRYPTION 1
+#define KEY_BYTES 16
+#define INPUT_BYTES 8
+#define IV_BYTES 0
+#define AAD_BYTES 0
+#define TAG_BYTES 0
+#define BATCH 1
+
+/* <<--params-->> */
+// brain_bit:
+const float avg = AVG;
+unsigned *avg_ptr = (unsigned *)&avg;
+int32_t key_length = KEY_LENGTH;
+const float std = STD;
+unsigned *std_ptr = (unsigned *)&std;
+const float R = R_val;
+unsigned *R_ptr = (unsigned *)&R;
+const int32_t L = L_val;
+int32_t key_batch = KEY_BATCH;
+int32_t key_num = KEY_NUM;
+int32_t val_num = VAL_NUM;
+int32_t tot_iter = TOT_ITER;
+const float Rs = R * std;
+// aes:
+unsigned oper_mode = OPER_MODE;
+unsigned encryption = ENCRYPTION;
+unsigned key_bytes = KEY_BYTES;
+unsigned input_bytes = INPUT_BYTES;
+unsigned iv_bytes = IV_BYTES;
+unsigned aad_bytes = AAD_BYTES;
+unsigned tag_bytes = TAG_BYTES;
+unsigned batch = BATCH;
+
+#define NACC 1
 
 #endif /* _BRAIN_AES_VIVADO_H_ */

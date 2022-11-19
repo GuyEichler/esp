@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "libesp.h"
 #include "cfg.h"
+#include "cfg_p2p.h"
 #include "brain_bit_input_full.h"
 #include "aes_data.h"
 
@@ -255,7 +256,7 @@ static void init_buffer_aes(token_t *in, token_t *gold, token_t *out, unsigned i
 
 static void init_buffer_aes_test1(token_t *in, token_t *gold, unsigned indx)
 {
-    int i;
+    // int i;
     int j;
 
     printf("init_buffer_aes_test1: raw_encrypt_plaintext_words_test1      [%u] %u\n", indx, ecb_raw_encrypt_plaintext_words_test1[indx]);
@@ -294,7 +295,7 @@ static int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigne
         token_t in_data = in[j];
         token_t gold_data = gold[j];
         token_t out_data = out[j];
-        
+
         if (out_data != gold_data)
         {
             errors++;
@@ -532,11 +533,11 @@ int run_brain_bit_and_aes()
 
     unsigned errors = 0;
 
-token_t *buf_brain;
+    token_t *buf_brain;
     token_t *gold_brain;
-    
+
     token_t *buf_aes;
-token_t *gold_aes;
+    token_t *gold_aes;
 
     // set brain_bit parameters
     key_length = 128;
@@ -593,14 +594,13 @@ token_t *gold_aes;
     cfg_aes_000[0].hw_buf = buf_aes;
 
     memset(buf_aes, 0, aes_size_bytes);
-    
+
     gold_aes = malloc(aes_out_size);
 
-
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_test1(buf_aes, gold_aes, 0 );
+    init_buffer_aes_test1(buf_aes, gold_aes, 0);
 
-    //init_buffer_aes_from_brain(buf_aes, &buf_brain[brain_out_offset], i);
+    // init_buffer_aes_from_brain(buf_aes, &buf_brain[brain_out_offset], i);
 
     int in_bytes_aes = val_num * sizeof(token_t);
 
@@ -638,17 +638,132 @@ token_t *gold_aes;
     return errors;
 }
 
+
+int run_brain_bit_and_aes_p2p()
+{
+    printf("==========================================\n");
+    printf("==   Start ** brain_bit + aes (p2p) **  ==\n");
+    printf("==========================================\n");
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit parameters
+    key_length = 128;
+    key_batch = 20;
+    key_num = N_TESTS;
+    key_num = 1;
+    val_num = key_num * 8;
+
+    init_parameters_brain_bit();
+
+    buf_brain = (token_t *)esp_alloc(brain_size);
+    cfg_p2p_000[0].hw_buf = buf_brain;
+
+    gold_brain = malloc(brain_out_size);
+
+    init_buffer_brain_bit(buf_brain, gold_brain);
+
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
+
+    printf("\n====== %s ====== parameters: \n", cfg_brain_bit_000[0].devname);
+    printf("  .avg          = %f\n", avg);
+    printf("  .key_length   = %d\n", key_length);
+    printf("  .std          = %f\n", std);
+    printf("  .R            = %f\n", R);
+    printf("  .L            = %d\n", L);
+    printf("  .key_batch    = %d\n", key_batch);
+    printf("  .key_num 	    = %d\n", key_num);
+    printf("  .val_num 	    = %d\n", val_num);
+
+    // printf("\n  ** START **\n");
+    // esp_run(cfg_brain_bit_000, NACC);
+    // printf("\n  ** DONE **\n");
+
+    
+    init_parameters_aes_from_brain(val_num);
+        
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_000[1].hw_buf = buf_aes;
+
+    memset(buf_aes, 0, aes_size_bytes);
+
+    gold_aes = malloc(aes_out_size);
+
+    // set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_test1(buf_aes, gold_aes, 0);
+
+    // init_buffer_aes_from_brain(buf_aes, &buf_brain[brain_out_offset], i);
+
+    int in_bytes_aes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes = in_bytes_aes;
+    input_bytes = in_bytes_aes;
+
+    printf("\n====== %s ====== parameters: \n", cfg_aes_000[0].devname);
+    printf("  .oper_mode    = %d\n", oper_mode);
+    printf("  .encryption   = %d\n", encryption);
+    printf("  .key_bytes    = %d\n", key_bytes);
+    printf("  .input_bytes  = %d\n", input_bytes);
+    printf("  .iv_bytes     = %d\n", iv_bytes);
+    printf("  .aad_bytes    = %d\n", aad_bytes);
+    printf("  .tag_bytes    = %d\n", tag_bytes);
+    printf("  .batch        = %d\n", batch);
+    printf("  .in_bytes_aes = %d\n", in_bytes_aes);
+
+    printf("\n  ** START **\n");
+    // esp_run(cfg_aes_000, NACC);
+    esp_run(cfg_p2p_000, 2);
+
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+
+    esp_free(buf_brain);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==========================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p) ** ==\n");
+    printf("==========================================\n");
+
+    return errors;
+}
+
+
+
 int main(int argc, char **argv)
 {
     int errors_0 = 0;
     int errors_1 = 0;
     int errors_2 = 0;
+    int errors_3 = 0;
 
     errors_0 = run_brain_bit_only();
 
     errors_1 = run_aes_only(N_BATCH);
 
     errors_2 = run_brain_bit_and_aes();
+    
+    errors_3 = run_brain_bit_and_aes_p2p();
 
-    return (errors_0 + errors_1 + errors_2);
+    return (errors_0 + errors_1 + errors_2 + errors_3);
 }

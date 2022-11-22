@@ -2,61 +2,25 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "libesp.h"
 #include "cfg.h"
-#include "cfg_p2p.h"
+#include "cfg_p2p_1x1.h"
+#include "cfg_p2p_1x2.h"
+#include "cfg_p2p_1x3.h"
+#include "cfg_p2p_1x4.h"
+#include "cfg_p2p_2x1.h"
+#include "cfg_p2p_3x1.h"
+#include "cfg_p2p_4x1.h"
+#include "cfg_p2p_4x4.h"
+#include "cfg_p2p_3x2.h"
+
 #include "brain_bit_input_full.h"
 #include "aes_data.h"
 
 #include <sys/time.h>
 
-// brain_bit:
-static unsigned brain_in_words_adj;
-static unsigned brain_out_words_adj;
-static unsigned brain_in_len;
-static unsigned brain_out_len;
-static unsigned brain_in_size;
-static unsigned brain_out_size;
-static unsigned brain_out_offset;
-static unsigned brain_size;
-static int brain_key_counter;
-
-// aes:
-#define N_BATCH 9
-static unsigned aes_in_words_adj;
-static unsigned aes_out_words_adj;
-static unsigned aes_in_len;
-static unsigned aes_out_len;
-static unsigned aes_in_size;
-static unsigned aes_out_size;
-static unsigned aes_out_offset;
-static unsigned aes_size_bytes;
-
-// static unsigned tag_bytes;
-/* static unsigned aad_bytes; */
-/* static unsigned in_bytes; */
-/* static unsigned out_bytes; */
-/* static unsigned iv_bytes; */
-/* static unsigned key_bytes; */
-/* static unsigned encryption; */
-/* static unsigned oper_mode; */
-
-/* static unsigned key_words; */
-/* static unsigned iv_words; */
-static unsigned aes_in_words;
-static unsigned aes_out_words;
-/* static unsigned aad_words; */
-/* static unsigned tag_words; */
-
-/* static unsigned key_size; */
-/* static unsigned iv_size; */
-// static unsigned in_size;
-// static unsigned out_size;
-/* static unsigned aad_size; */
-/* static unsigned tag_size; */
-
 // input_size for each iteration
 const unsigned array_size[12] = {16, 32, 48, 64, 80, 96, 112, 128, 144};
 
-static void init_parameters_brain_bit()
+void init_parameters_brain_bit(void)
 {
     if (DMA_WORD_PER_BEAT(sizeof(token_t)) == 0)
     {
@@ -74,23 +38,39 @@ static void init_parameters_brain_bit()
     brain_out_size = brain_out_len * sizeof(token_t);
     brain_out_offset = brain_in_len;
     brain_size = (brain_out_offset * sizeof(token_t)) + brain_out_size;
+
+    printf("%s: brain_in_words_adj  = %u\n", __func__, brain_in_words_adj);
+    printf("%s: brain_out_words_adj = %u\n", __func__, brain_out_words_adj);
+    printf("%s: brain_in_len        = %u\n", __func__, brain_in_len);
+    printf("%s: brain_out_len       = %u\n", __func__, brain_out_len);
+    printf("%s: brain_in_size       = %u\n", __func__, brain_in_size);
+    printf("%s: brain_out_size      = %u\n", __func__, brain_out_size);
+    printf("%s: brain_out_offset    = %u\n", __func__, brain_out_offset);
+    printf("%s: brain_size          = %u\n", __func__, brain_size);
 }
 
-static void init_buffer_brain_bit(token_t *in, token_t *gold)
+void init_buffer_brain_bit(token_t *in, token_t *gold)
 {
     int i;
     int j;
+    int k;
 
-    for (i = 0; i < key_batch; i++)
-        for (j = 0; j < key_length; j++)
+    for (k = 0; k < tot_iter; k++)
+    {
+        for (i = 0; i < key_batch; i++)
         {
-            float val = val_arr[i * brain_in_words_adj + j];
-            in[i * brain_in_words_adj + j] = (token_t)float_to_fixed32(val, 12);
-            // in[i * in_words_adj + j] = (token_t) val;
-            /* printf("Generated value %f\n", fixed32_to_float(in[i * out_words_adj + j] , 12)); */
+            for (j = 0; j < key_length; j++)
+            {
+                float val = val_arr[k * key_batch * key_length + i * brain_in_words_adj + j];
+                in[k * key_batch * key_length + i * brain_in_words_adj + j] = (token_t)float_to_fixed32(val, 12);
+                // in[i * in_words_adj + j] = (token_t) val;
+                /* printf("Generated value %f\n", fixed32_to_float(in[i * out_words_adj + j] , 12)); */
+            }
         }
+    }
 
     for (i = 0; i < key_batch; i++)
+    {
         for (j = 0; j < key_length; j++)
         {
             float val = val_arr[i * brain_in_words_adj + j];
@@ -107,9 +87,10 @@ static void init_buffer_brain_bit(token_t *in, token_t *gold)
                 gold[i * brain_out_words_adj + j] = 3;
             }
         }
+    }
 }
 
-static int validate_buffer_brain_bit(token_t *out, token_t *gold)
+int validate_buffer_brain_bit(token_t *out, token_t *gold)
 {
     int i;
     int j;
@@ -193,11 +174,11 @@ static int validate_buffer_brain_bit(token_t *out, token_t *gold)
     return errors;
 }
 
-static void init_parameters_aes(unsigned indx)
+void init_parameters_aes(unsigned indx)
 {
-    aes_in_words = ecb_raw_encrypt_plaintext_words[indx] +
-                   ecb_raw_encrypt_key_words[indx];
-    aes_out_words = ecb_raw_encrypt_plaintext_words[indx];
+    aes_in_words = ecb_plaintext_words[indx] +
+                   ecb_key_words[indx];
+    aes_out_words = ecb_plaintext_words[indx];
 
     if (DMA_WORD_PER_BEAT(sizeof(token_t)) == 0)
     {
@@ -227,61 +208,61 @@ static void init_parameters_aes(unsigned indx)
     printf("%s: aes_size_bytes    = %u\n", __func__, aes_size_bytes);
 }
 
-static void init_buffer_aes(token_t *in, token_t *gold, token_t *out, unsigned indx)
+void init_buffer_aes(token_t *in, token_t *gold, token_t *out, unsigned indx)
 {
     int i;
     int j;
 
-    printf("init_buffer_aes: raw_encrypt_plaintext_words     [%u] %u\n", indx, ecb_raw_encrypt_plaintext_words[indx]);
-    printf("init_buffer_aes: ecb_raw_encrypt_ciphertext_words[%u] %u\n", indx, ecb_raw_encrypt_ciphertext_words[indx]);
+    printf("init_buffer_aes: ecb_plaintext_words [%u] %u\n", indx, ecb_plaintext_words[indx]);
+    printf("init_buffer_aes: ecb_ciphertext_words[%u] %u\n", indx, ecb_ciphertext_words[indx]);
 
-    for (j = 0; j < ecb_raw_encrypt_key_words[indx]; j++)
+    for (j = 0; j < ecb_key_words[indx]; j++)
     {
-        in[j] = ecb_raw_encrypt_key[indx][j];
+        in[j] = ecb_key[indx][j];
         // printf("INFO: raw_encrypt_key[%u][%u] | %x\n", indx, j, in[j]);
     }
 
-    for (i = 0; i < ecb_raw_encrypt_plaintext_words[indx]; i++, j++)
+    for (i = 0; i < ecb_plaintext_words[indx]; i++, j++)
     {
-        in[j] = ecb_raw_encrypt_plaintext[indx][i];
+        in[j] = ecb_plaintext[indx][i];
         // printf("INFO: raw_encrypt_plaintext[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
     }
 
-    for (j = 0; j < ecb_raw_encrypt_ciphertext_words[indx]; j++)
+    for (j = 0; j < ecb_ciphertext_words[indx]; j++)
     {
-        gold[j] = ecb_raw_encrypt_ciphertext[indx][j];
+        gold[j] = ecb_ciphertext[indx][j];
         // printf("INFO: raw_encrypt_ciphertext[%u][%u] %x\n", indx, j, gold[j]);
     }
 }
 
-static void init_buffer_aes_test1(token_t *in, token_t *gold, unsigned indx)
+void init_buffer_aes_p2p_1x1(token_t *in, token_t *gold, unsigned indx)
 {
     // int i;
     int j;
 
-    printf("init_buffer_aes_test1: raw_encrypt_plaintext_words_test1      [%u] %u\n", indx, ecb_raw_encrypt_plaintext_words_test1[indx]);
-    printf("init_buffer_aes_test1: ecb_raw_encrypt_ciphertext_words_test1 [%u] %u\n", indx, ecb_raw_encrypt_ciphertext_words_test1[indx]);
+    printf("init_buffer_aes_p2p_1x1: ecb_plaintext_words_p2p_1x1  [%u] %u\n", indx, ecb_plaintext_words_p2p_1x1[indx]);
+    printf("init_buffer_aes_p2p_1x1: ecb_ciphertext_words_p2p_1x1 [%u] %u\n", indx, ecb_ciphertext_words_p2p_1x1[indx]);
 
-    // for (j = 0; j < ecb_raw_encrypt_key_words_test1[indx]; j++)
+    // for (j = 0; j < ecb_key_words_p2p_1x1[indx]; j++)
     // {
-    //     in[j] = ecb_raw_encrypt_key_test1[indx][j];
-    //     printf("INFO: raw_encrypt_key_test1[%u][%u] | %x\n", indx, j, in[j]);
+    //     in[j] = ecb_key_p2p_1x1[indx][j];
+    //     printf("INFO: raw_encrypt_key_p2p_1x1[%u][%u] | %x\n", indx, j, in[j]);
     // }
 
-    // for (i = 0; i < ecb_raw_encrypt_plaintext_words_test1[indx]; i++, j++)
+    // for (i = 0; i < ecb_plaintext_words_p2p_1x1[indx]; i++, j++)
     // {
-    //     in[j] = ecb_raw_encrypt_plaintext_test1[indx][i];
-    //     printf("INFO: raw_encrypt_plaintext_test1[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
+    //     in[j] = ecb_plaintext_p2p_1x1[indx][i];
+    //     printf("INFO: raw_encrypt_plaintext_p2p_1x1[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
     // }
 
-    for (j = 0; j < ecb_raw_encrypt_ciphertext_words_test1[indx]; j++)
+    for (j = 0; j < ecb_ciphertext_words_p2p_1x1[indx]; j++)
     {
-        gold[j] = ecb_raw_encrypt_ciphertext_test1[indx][j];
-        printf("INFO: raw_encrypt_ciphertext_test1[%u][%u] %x\n", indx, j, gold[j]);
+        gold[j] = ecb_ciphertext_p2p_1x1[indx][j];
+        printf("INFO: raw_encrypt_ciphertext_p2p_1x1[%u][%u] %x\n", indx, j, gold[j]);
     }
 }
 
-static int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigned indx)
+int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigned indx)
 {
     /* int i; */
     int j;
@@ -290,7 +271,7 @@ static int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigne
     printf("INFO:  gold output data @%p\n", gold);
     printf("INFO:       output data @%p\n", out);
 
-    for (j = 0; j < ecb_raw_encrypt_ciphertext_words[indx] /* + 0x10 */; j++)
+    for (j = 0; j < ecb_ciphertext_words[indx] /* + 0x10 */; j++)
     {
         token_t in_data = in[j];
         token_t gold_data = gold[j];
@@ -299,17 +280,15 @@ static int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigne
         if (out_data != gold_data)
         {
             errors++;
-            // printf("mismatch: [%d] @%p %x (%x)\n", j, out + j, out_data, gold_data);
+            printf("mistmatch_aes: [%d] @%p, in: %x, out: %x, gold: %x\n", j, out + j, in_data, out_data, gold_data);
         }
-        printf("mismatch: [%d] @%p, in: %x, out: %x, gold: %x\n", j, out + j, in_data, out_data, gold_data);
+        // printf("validate_aes: [%d] @%p, in: %x, out: %x, gold: %x\n", j, out + j, in_data, out_data, gold_data);
     }
-
-    printf("INFO: total errors %u\n", errors);
 
     return errors;
 }
 
-static void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
+void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
 {
     // this function should only take 1 key
 
@@ -322,14 +301,18 @@ static void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
     for (i = 0; i < key_num_words; i++)
     {
         in_aes[i] = out_brain[i];
+        // printf("in_aes[%d] = %x\n", i, in_aes[i]);
     }
+    // printf("---\n");
     for (j = 0; j < val_num_words; j++)
     {
         in_aes[i + j] = out_brain[j + i];
+        // printf("in_aes[%d] = %x\n", i + j, in_aes[i + j]);
     }
 }
 
-static void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx)
+/*
+void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx)
 {
 
     int i;
@@ -351,14 +334,15 @@ static void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *a
         // printf("INFO: raw_encrypt_plaintext[%u][%u] | inputs[%u]@%p %x\n", indx, i, j, in + j, in[j]);
     }
 
-    /* for (j = 0; j < ecb_raw_encrypt_ciphertext_words[indx]; j++) */
-    /* { */
-    /* 	gold[j] = ecb_raw_encrypt_ciphertext[indx][j]; */
-    /* 	// printf("INFO: raw_encrypt_ciphertext[%u][%u] %x\n", indx, j, gold[j]); */
-    /* } */
+    for (j = 0; j < ecb_ciphertext_words[indx]; j++)
+    {
+        gold[j] = ecb_ciphertext[indx][j];
+        // printf("INFO: raw_encrypt_ciphertext[%u][%u] %x\n", indx, j, gold[j]);
+    }
 }
+*/
 
-static void init_parameters_aes_from_brain(int val_n)
+void init_parameters_aes_from_brain(int val_n)
 {
     aes_in_words = val_n + (key_length / DATA_BITWIDTH);
     aes_out_words = val_n;
@@ -382,11 +366,11 @@ static void init_parameters_aes_from_brain(int val_n)
     aes_size_bytes = (aes_out_offset * sizeof(token_t)) + aes_out_size;
 }
 
-int run_brain_bit_only()
+int run_brain_bit_only(void)
 {
-    printf("==========================================\n");
-    printf("==   Start ** brain_bit **              ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit **                      ==\n");
+    printf("==================================================\n");
 
     unsigned errors;
 
@@ -397,19 +381,22 @@ int run_brain_bit_only()
 
     buf = (token_t *)esp_alloc(brain_size);
     cfg_brain_bit_000[0].hw_buf = buf;
+    memset(buf, 0, brain_size);
 
     gold = malloc(brain_out_size);
 
     init_buffer_brain_bit(buf, gold);
 
-    printf("\n====== %s ====== parameters: \n", cfg_brain_bit_000[0].devname);
-    printf("  .avg 			= %f\n", avg);
-    printf("  .key_length 	= %d\n", key_length);
-    printf("  .std 			= %f\n", std);
-    printf("  .R		 	= %f\n", R);
-    printf("  .L 			= %d\n", L);
-    printf("  .key_batch 	= %d\n", key_batch);
-    printf("  .key_num 		= %d\n", key_num);
+    printf("\n====== %s ====== config registers: \n", cfg_brain_bit_000[0].devname);
+    printf("  .avg          = %f\n", avg);
+    printf("  .key_length   = %d\n", key_length);
+    printf("  .std          = %f\n", std);
+    printf("  .R            = %f\n", R);
+    printf("  .L            = %d\n", L);
+    printf("  .key_batch    = %d\n", key_batch);
+    printf("  .key_num      = %d\n", key_num);
+    printf("  .val_num      = %d\n", val_num);
+    printf("  .tot_iter 	= %d\n", tot_iter);
 
     unsigned avg_u = *avg_ptr;
     unsigned std_u = *std_ptr;
@@ -433,9 +420,6 @@ int run_brain_bit_only()
 
     errors = validate_buffer_brain_bit(&buf[brain_out_offset], gold);
 
-    free(gold);
-    esp_free(buf);
-
     float total = 100 * (float)errors / (key_length * key_batch);
     if (total <= 1)
     {
@@ -448,18 +432,21 @@ int run_brain_bit_only()
         printf("+ Test FAILED with %f%% errors\n\n", total);
     }
 
-    printf("==========================================\n");
-    printf("==   Finish ** brain_bit **             ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit **                     ==\n");
+    printf("==================================================\n");
+
+    free(gold);
+    esp_free(buf);
 
     return errors;
 }
 
 int run_aes_only(int n_batch)
 {
-    printf("==========================================\n");
-    printf("==   Start ** aes **                    ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Start ** aes **                            ==\n");
+    printf("==================================================\n");
 
     unsigned errors = 0;
 
@@ -477,14 +464,13 @@ int run_aes_only(int n_batch)
 
         buf_0 = (token_t *)esp_alloc(aes_size_bytes);
         cfg_aes_000[0].hw_buf = buf_0;
-
         memset(buf_0, 0, aes_size_bytes);
 
         gold = malloc(aes_out_size);
 
         init_buffer_aes(buf_0, gold, &buf_0[aes_out_offset], i);
 
-        printf("\n====== %s ====== parameters: \n", cfg_aes_000[0].devname);
+        printf("\n====== %s ====== config registers: \n", cfg_aes_000[0].devname);
         printf("  .oper_mode   = %d\n", oper_mode);
         printf("  .encryption  = %d\n", encryption);
         printf("  .key_bytes   = %d\n", key_bytes);
@@ -509,29 +495,33 @@ int run_aes_only(int n_batch)
         printf("\n  ** acc DONE **\n");
 
         errors = validate_buffer_aes(buf_0, &buf_0[aes_out_offset], gold, i);
-
-        free(gold);
-        esp_free(buf_0);
+        printf("INFO: total errors %u\n", errors);
 
         if (!errors)
             printf("  + TEST PASS\n\n");
         else
             printf("  + TEST FAIL\n\n");
+
+        free(gold);
+        esp_free(buf_0);
     }
-    printf("==========================================\n");
-    printf("==   Finish ** aes **                   ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Finish ** aes **                           ==\n");
+    printf("==================================================\n");
 
     return errors;
 }
 
-int run_brain_bit_and_aes()
+int run_both_mem_1x1(int N)
 {
-    printf("==========================================\n");
-    printf("==   Start ** brain_bit + aes **        ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (mem_1x1) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
 
     unsigned errors = 0;
+    int i = 0;
 
     token_t *buf_brain;
     token_t *gold_brain;
@@ -539,18 +529,17 @@ int run_brain_bit_and_aes()
     token_t *buf_aes;
     token_t *gold_aes;
 
-    // set brain_bit parameters
+    // set brain_bit config registers
     key_length = 128;
-    key_batch = 20;
-    key_num = N_TESTS;
+    key_batch = 3;
     key_num = 1;
-    val_num = key_num * 8;
+    val_num = key_num * 4;
 
     init_parameters_brain_bit();
 
     buf_brain = (token_t *)esp_alloc(brain_size);
     cfg_brain_bit_000[0].hw_buf = buf_brain;
-
+    memset(buf_brain, 0, brain_size);
     gold_brain = malloc(brain_out_size);
 
     init_buffer_brain_bit(buf_brain, gold_brain);
@@ -567,19 +556,24 @@ int run_brain_bit_and_aes()
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_batch = key_batch;
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
 
-    printf("\n====== %s ====== parameters: \n", cfg_brain_bit_000[0].devname);
+    printf("\n====== %s ====== config registers: \n", cfg_brain_bit_000[0].devname);
     printf("  .avg          = %f\n", avg);
     printf("  .key_length   = %d\n", key_length);
     printf("  .std          = %f\n", std);
     printf("  .R            = %f\n", R);
     printf("  .L            = %d\n", L);
     printf("  .key_batch    = %d\n", key_batch);
-    printf("  .key_num 	    = %d\n", key_num);
-    printf("  .val_num 	    = %d\n", val_num);
+    printf("  .key_num      = %d\n", key_num);
+    printf("  .val_num      = %d\n", val_num);
+    printf("  .tot_iter 	= %d\n", tot_iter);
 
     printf("\n  ** START **\n");
     // Run brain_bit in isolation
-    esp_run(cfg_brain_bit_000, NACC);
+    for (i = 0; i < N; i++)
+    {
+        esp_run(cfg_brain_bit_000, NACC);
+        total_time += cfg_brain_bit_000[0].hw_ns;
+    }
     printf("\n  ** DONE **\n");
 
     // set aes keys to key_length_words * key_num
@@ -592,58 +586,62 @@ int run_brain_bit_and_aes()
 
     buf_aes = (token_t *)esp_alloc(aes_size_bytes);
     cfg_aes_000[0].hw_buf = buf_aes;
-
     memset(buf_aes, 0, aes_size_bytes);
 
     gold_aes = malloc(aes_out_size);
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_test1(buf_aes, gold_aes, 0);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
 
     // init_buffer_aes_from_brain(buf_aes, &buf_brain[brain_out_offset], i);
 
-    int in_bytes_aes = val_num * sizeof(token_t);
+    input_bytes = val_num * sizeof(token_t);
 
-    ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes = in_bytes_aes;
-    input_bytes = in_bytes_aes;
+    ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes = input_bytes;
 
-    printf("\n====== %s ====== parameters: \n", cfg_aes_000[0].devname);
-    printf("  .oper_mode    = %d\n", oper_mode);
-    printf("  .encryption   = %d\n", encryption);
-    printf("  .key_bytes    = %d\n", key_bytes);
-    printf("  .input_bytes  = %d\n", input_bytes);
-    printf("  .iv_bytes     = %d\n", iv_bytes);
-    printf("  .aad_bytes    = %d\n", aad_bytes);
-    printf("  .tag_bytes    = %d\n", tag_bytes);
-    printf("  .batch        = %d\n", batch);
-    printf("  .in_bytes_aes = %d\n", in_bytes_aes);
+    printf("\n====== %s ====== config registers: \n", cfg_aes_000[0].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->batch);
 
     printf("\n  ** START **\n");
-    esp_run(cfg_aes_000, NACC);
+    for (i = 0; i < N; i++)
+    {
+        esp_run(cfg_aes_000, NACC);
+        total_time += cfg_aes_000[0].hw_ns;
+    }
     printf("\n  ** DONE **\n");
 
     errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
-
-    esp_free(buf_brain);
+    printf("INFO: total errors %u\n", errors);
 
     if (!errors)
         printf("  + TEST PASS\n");
     else
         printf("  + TEST FAIL\n");
 
-    printf("==========================================\n");
-    printf("==   Finish ** brain_bit + aes **       ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (mem_1x1) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
 
     return errors;
 }
 
-
-int run_brain_bit_and_aes_p2p()
+int run_both_p2p_1x1(int N)
 {
-    printf("==========================================\n");
-    printf("==   Start ** brain_bit + aes (p2p) **  ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_1x1) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
 
     unsigned errors = 0;
 
@@ -653,19 +651,25 @@ int run_brain_bit_and_aes_p2p()
     token_t *buf_aes;
     token_t *gold_aes;
 
-    // set brain_bit parameters
+    // set brain_bit config registers
     key_length = 128;
-    key_batch = 20;
-    key_num = N_TESTS;
+    key_batch = 3;
     key_num = 1;
-    val_num = key_num * 8;
+    val_num = key_num * 4;
+    tot_iter = N;
 
     init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
 
     buf_brain = (token_t *)esp_alloc(brain_size);
-    cfg_p2p_000[0].hw_buf = buf_brain;
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_1x1[0].hw_buf = buf_brain;
+    cfg_p2p_1x1[1].hw_buf = buf_aes;
+    memset(buf_brain, 0, brain_size);
+    memset(buf_aes, 0, aes_size_bytes);
 
     gold_brain = malloc(brain_out_size);
+    gold_aes = malloc(aes_out_size);
 
     init_buffer_brain_bit(buf_brain, gold_brain);
 
@@ -673,49 +677,139 @@ int run_brain_bit_and_aes_p2p()
     unsigned std_u = *std_ptr;
     unsigned R_u = *R_ptr;
 
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->avg = avg_u;
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->std = std_u;
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->R = R_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->R = R_u;
 
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_length = key_length;
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_batch = key_batch;
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->tot_iter = tot_iter;
 
-    printf("\n====== %s ====== parameters: \n", cfg_brain_bit_000[0].devname);
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->batch = N;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_1x1[0].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_1x1[1].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_1x1[1].esp_desc)->batch);
+
+    printf("\n  ** START **\n");
+    esp_run(cfg_p2p_1x1, 2);
+    total_time = max(cfg_p2p_1x1[0].hw_ns, cfg_p2p_1x1[1].hw_ns);
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    printf("INFO: total errors %u\n", errors);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_1x1) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
+
+    return errors;
+}
+
+int run_both_p2p_1x2(void)
+{
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_1x2) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit config registers
+    key_length = 128;
+    key_batch = 3;
+    key_num = 1;
+    val_num = key_num * 4;
+    tot_iter = 2;
+
+    init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
+
+    buf_brain = (token_t *)esp_alloc(brain_size);
+    // buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    buf_aes = (token_t *)esp_alloc(5000000);
+    cfg_p2p_1x2[0].hw_buf = buf_brain;
+    cfg_p2p_1x2[1].hw_buf = buf_aes;
+    cfg_p2p_1x2[2].hw_buf = buf_aes;
+
+    memset(buf_brain, 0, brain_size);
+    // memset(buf_aes, 0, aes_size_bytes);
+    memset(buf_aes, 0, 5000000);
+
+    gold_brain = malloc(brain_out_size);
+    gold_aes = malloc(aes_out_size);
+
+    // init_buffer_brain_bit(buf_brain, gold_brain);
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->tot_iter = tot_iter;
+
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    // init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_1x2[1].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_1x2[2].esp_desc)->input_bytes = input_bytes;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_1x2[0].devname);
     printf("  .avg          = %f\n", avg);
     printf("  .key_length   = %d\n", key_length);
     printf("  .std          = %f\n", std);
     printf("  .R            = %f\n", R);
     printf("  .L            = %d\n", L);
     printf("  .key_batch    = %d\n", key_batch);
-    printf("  .key_num 	    = %d\n", key_num);
-    printf("  .val_num 	    = %d\n", val_num);
+    printf("  .key_num      = %d\n", key_num);
+    printf("  .val_num      = %d\n", val_num);
+    printf("  .tot_iter 	= %d\n", tot_iter);
 
-    // printf("\n  ** START **\n");
-    // esp_run(cfg_brain_bit_000, NACC);
-    // printf("\n  ** DONE **\n");
-
-    
-    init_parameters_aes_from_brain(val_num);
-        
-    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
-    cfg_p2p_000[1].hw_buf = buf_aes;
-
-    memset(buf_aes, 0, aes_size_bytes);
-
-    gold_aes = malloc(aes_out_size);
-
-    // set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_test1(buf_aes, gold_aes, 0);
-
-    // init_buffer_aes_from_brain(buf_aes, &buf_brain[brain_out_offset], i);
-
-    int in_bytes_aes = val_num * sizeof(token_t);
-
-    ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->input_bytes = in_bytes_aes;
-    input_bytes = in_bytes_aes;
-
-    printf("\n====== %s ====== parameters: \n", cfg_aes_000[0].devname);
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_1x2[1].devname);
     printf("  .oper_mode    = %d\n", oper_mode);
     printf("  .encryption   = %d\n", encryption);
     printf("  .key_bytes    = %d\n", key_bytes);
@@ -724,46 +818,923 @@ int run_brain_bit_and_aes_p2p()
     printf("  .aad_bytes    = %d\n", aad_bytes);
     printf("  .tag_bytes    = %d\n", tag_bytes);
     printf("  .batch        = %d\n", batch);
-    printf("  .in_bytes_aes = %d\n", in_bytes_aes);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_1x2[2].devname);
+    printf("  .oper_mode    = %d\n", oper_mode);
+    printf("  .encryption   = %d\n", encryption);
+    printf("  .key_bytes    = %d\n", key_bytes);
+    printf("  .input_bytes  = %d\n", input_bytes);
+    printf("  .iv_bytes     = %d\n", iv_bytes);
+    printf("  .aad_bytes    = %d\n", aad_bytes);
+    printf("  .tag_bytes    = %d\n", tag_bytes);
+    printf("  .batch        = %d\n", batch);
 
     printf("\n  ** START **\n");
-    // esp_run(cfg_aes_000, NACC);
-    esp_run(cfg_p2p_000, 2);
-
+    esp_run(cfg_p2p_1x2, 3);
     printf("\n  ** DONE **\n");
 
     errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
-
-    esp_free(buf_brain);
+    printf("INFO: total errors %u\n", errors);
 
     if (!errors)
         printf("  + TEST PASS\n");
     else
         printf("  + TEST FAIL\n");
 
-    printf("==========================================\n");
-    printf("==   Finish ** brain_bit + aes (p2p) ** ==\n");
-    printf("==========================================\n");
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_1x2) **     ==\n");
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
+
+    return errors;
+}
+
+int run_both_p2p_2x1(int N)
+{
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_2x1) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit config registers
+    key_length = 128;
+    key_batch = 3;
+    key_num = 1;
+    val_num = key_num * 4;
+    tot_iter = N;
+
+    init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
+
+    buf_brain = (token_t *)esp_alloc(brain_size * N);
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_2x1[0].hw_buf = buf_brain;
+    cfg_p2p_2x1[1].hw_buf = buf_brain;
+    cfg_p2p_2x1[2].hw_buf = buf_aes;
+    memset(buf_brain, 0, brain_size * N);
+    memset(buf_aes, 0, aes_size_bytes);
+
+    gold_brain = malloc(brain_out_size * N);
+    gold_aes = malloc(aes_out_size);
+
+    init_buffer_brain_bit(buf_brain, gold_brain);
+
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->tot_iter = tot_iter;
+
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->batch = 2 * N;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_2x1[0].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[0].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_2x1[1].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_2x1[2].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_2x1[2].esp_desc)->batch);
+
+    printf("\n  ** START **\n");
+    esp_run(cfg_p2p_2x1, 3);
+    total_time = max(cfg_p2p_2x1[0].hw_ns,
+                    max(cfg_p2p_2x1[1].hw_ns,
+                    cfg_p2p_2x1[2].hw_ns));
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    printf("INFO: total errors %u\n", errors);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_2x1) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
+
+    return errors;
+}
+
+int run_both_p2p_3x1(int N)
+{
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_3x1) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit config registers
+    key_length = 128;
+    key_batch = 3;
+    key_num = 1;
+    val_num = key_num * 4;
+    tot_iter = N;
+
+    init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
+
+    buf_brain = (token_t *)esp_alloc(brain_size * N);
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_3x1[0].hw_buf = buf_brain;
+    cfg_p2p_3x1[1].hw_buf = buf_brain;
+    cfg_p2p_3x1[2].hw_buf = buf_brain;
+    cfg_p2p_3x1[3].hw_buf = buf_aes;
+    memset(buf_brain, 0, brain_size * N);
+    memset(buf_aes, 0, aes_size_bytes);
+
+    gold_brain = malloc(brain_out_size * N);
+    gold_aes = malloc(aes_out_size);
+
+    init_buffer_brain_bit(buf_brain, gold_brain);
+
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->tot_iter = tot_iter;
+
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->batch = 3 * N;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x1[0].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[0].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x1[1].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[1].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x1[2].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x1[3].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->batch);
+
+    printf("\n  ** START **\n");
+    esp_run(cfg_p2p_3x1, 4);
+    total_time = max( cfg_p2p_3x1[0].hw_ns,
+    max(cfg_p2p_3x1[1].hw_ns,
+    max(cfg_p2p_3x1[2].hw_ns,
+    cfg_p2p_3x1[3].hw_ns)));
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    printf("INFO: total errors %u\n", errors);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_3x1) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
+
+    return errors;
+}
+
+int run_both_p2p_4x1(int N)
+{
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_4x1) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit config registers
+    key_length = 128;
+    key_batch = 3;
+    key_num = 1;
+    val_num = key_num * 4;
+    tot_iter = N;
+
+    init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
+
+    buf_brain = (token_t *)esp_alloc(brain_size * N);
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_4x1[0].hw_buf = buf_brain;
+    cfg_p2p_4x1[1].hw_buf = buf_brain;
+    cfg_p2p_4x1[2].hw_buf = buf_brain;
+    cfg_p2p_4x1[3].hw_buf = buf_brain;
+    cfg_p2p_4x1[4].hw_buf = buf_aes;
+    memset(buf_brain, 0, brain_size * N);
+    memset(buf_aes, 0, aes_size_bytes);
+
+    gold_brain = malloc(brain_out_size * N);
+    gold_aes = malloc(aes_out_size);
+
+    init_buffer_brain_bit(buf_brain, gold_brain);
+
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->tot_iter = tot_iter;
+
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->batch = 4 * N;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x1[0].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[0].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x1[1].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[1].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x1[2].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[2].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x1[3].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x1[4].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->batch);
+
+    printf("\n  ** START **\n");
+    esp_run(cfg_p2p_4x1, 5);
+    total_time  = max(cfg_p2p_4x1[0].hw_ns,
+    max(cfg_p2p_4x1[1].hw_ns,
+    max(cfg_p2p_4x1[2].hw_ns,
+    max(cfg_p2p_4x1[3].hw_ns,
+    cfg_p2p_4x1[4].hw_ns))));
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    printf("INFO: total errors %u\n", errors);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_4x1) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
+
+    return errors;
+}
+
+int run_both_p2p_4x4(int N)
+{
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_4x4) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit config registers
+    key_length = 128;
+    key_batch = 3;
+    key_num = 1;
+    val_num = key_num * 4;
+    tot_iter = N;
+
+    init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
+
+    buf_brain = (token_t *)esp_alloc(brain_size * N);
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_4x4[0].hw_buf = buf_brain;
+    cfg_p2p_4x4[1].hw_buf = buf_brain;
+    cfg_p2p_4x4[2].hw_buf = buf_brain;
+    cfg_p2p_4x4[3].hw_buf = buf_brain;
+    cfg_p2p_4x4[4].hw_buf = buf_aes;
+    cfg_p2p_4x4[5].hw_buf = buf_aes;
+    cfg_p2p_4x4[6].hw_buf = buf_aes;
+    cfg_p2p_4x4[7].hw_buf = buf_aes;
+    memset(buf_brain, 0, brain_size * N);
+    memset(buf_aes, 0, aes_size_bytes);
+
+    gold_brain = malloc(brain_out_size * N);
+    gold_aes = malloc(aes_out_size);
+
+    init_buffer_brain_bit(buf_brain, gold_brain);
+
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->tot_iter = tot_iter;
+
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->batch = N;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->batch = N;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->batch = N;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->batch = N;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[0].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[0].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[1].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[1].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[2].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[2].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[3].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[4].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[4].esp_desc)->batch);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[5].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[5].esp_desc)->batch);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[6].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[6].esp_desc)->batch);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_4x4[7].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_4x4[7].esp_desc)->batch);
+
+    printf("\n  ** START **\n");
+    esp_run(cfg_p2p_4x4, 8);
+    total_time = max(cfg_p2p_4x4[0].hw_ns,
+                 max(cfg_p2p_4x4[1].hw_ns,
+                 max(cfg_p2p_4x4[2].hw_ns,
+                 max(cfg_p2p_4x4[3].hw_ns,
+                 max(cfg_p2p_4x4[4].hw_ns,
+                 max(cfg_p2p_4x4[5].hw_ns,
+                 max(cfg_p2p_4x4[6].hw_ns,
+                 cfg_p2p_4x4[7].hw_ns)))))));
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    printf("INFO: total errors %u\n", errors);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_4x4) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
 
     return errors;
 }
 
 
 
+int run_both_p2p_3x2(int N)
+{
+    printf("==================================================\n");
+    printf("==   Start ** brain_bit + aes (p2p_3x2) **      ==\n");
+    printf("==================================================\n");
+
+    unsigned long long total_time = 0;
+
+    unsigned errors = 0;
+
+    token_t *buf_brain;
+    token_t *gold_brain;
+
+    token_t *buf_aes;
+    token_t *gold_aes;
+
+    // set brain_bit config registers
+    key_length = 128;
+    key_batch = 3;
+    key_num = 1;
+    val_num = key_num * 4;
+    tot_iter = N;
+
+    init_parameters_brain_bit();
+    // init_parameters_aes_from_brain(val_num);
+
+    buf_brain = (token_t *)esp_alloc(brain_size * N);
+    buf_aes = (token_t *)esp_alloc(aes_size_bytes);
+    cfg_p2p_3x2[0].hw_buf = buf_brain;
+    cfg_p2p_3x2[1].hw_buf = buf_brain;
+    cfg_p2p_3x2[2].hw_buf = buf_brain;
+    cfg_p2p_3x2[3].hw_buf = buf_aes;
+    cfg_p2p_3x2[4].hw_buf = buf_aes;
+    memset(buf_brain, 0, brain_size * N);
+    memset(buf_aes, 0, aes_size_bytes);
+
+    gold_brain = malloc(brain_out_size * N);
+    gold_aes = malloc(aes_out_size);
+
+    init_buffer_brain_bit(buf_brain, gold_brain);
+
+    unsigned avg_u = *avg_ptr;
+    unsigned std_u = *std_ptr;
+    unsigned R_u = *R_ptr;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->tot_iter = tot_iter;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->avg = avg_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->std = std_u;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->R = R_u;
+
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->key_length = key_length;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->key_batch = key_batch;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->key_num = key_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->tot_iter = tot_iter;
+
+
+    set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
+    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+
+    input_bytes = val_num * sizeof(token_t);
+
+    ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->batch = 2*N;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->input_bytes = input_bytes;
+    ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->batch = N;
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x2[0].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[0].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x2[1].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[1].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x2[2].devname);
+    printf("  .avg          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->avg);
+    printf("  .key_length   = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->key_length);
+    printf("  .std          = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->std);
+    printf("  .R            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->R);
+    printf("  .L            = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->L);
+    printf("  .key_batch    = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->key_batch);
+    printf("  .key_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->key_num);
+    printf("  .val_num      = %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->val_num);
+    printf("  .tot_iter 	= %d\n", ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->tot_iter);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x2[3].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[3].esp_desc)->batch);
+
+    printf("\n====== %s ====== config registers: \n", cfg_p2p_3x2[4].devname);
+    printf("  .oper_mode    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->oper_mode);
+    printf("  .encryption   = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->encryption);
+    printf("  .key_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->key_bytes);
+    printf("  .input_bytes  = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->input_bytes);
+    printf("  .iv_bytes     = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->iv_bytes);
+    printf("  .aad_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->aad_bytes);
+    printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->tag_bytes);
+    printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_p2p_3x2[4].esp_desc)->batch);
+
+   
+    printf("\n  ** START **\n");
+    esp_run(cfg_p2p_3x2, 5);
+    total_time =max( cfg_p2p_3x2[0].hw_ns,
+                max(cfg_p2p_3x2[1].hw_ns,
+                max(cfg_p2p_3x2[2].hw_ns,
+                max(cfg_p2p_3x2[3].hw_ns,
+                cfg_p2p_3x2[4].hw_ns))));
+    printf("\n  ** DONE **\n");
+
+    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    printf("INFO: total errors %u\n", errors);
+
+    if (!errors)
+        printf("  + TEST PASS\n");
+    else
+        printf("  + TEST FAIL\n");
+
+    printf("==================================================\n");
+    printf("==   Finish ** brain_bit + aes (p2p_3x2) **     ==\n");
+    printf("==     N: %d\tTotal time: %llu\n", N, total_time);
+    printf("==================================================\n");
+
+    esp_free(buf_brain);
+
+    return errors;
+}
+
 int main(int argc, char **argv)
 {
+    int total_errors = -7;
     int errors_0 = 0;
     int errors_1 = 0;
     int errors_2 = 0;
     int errors_3 = 0;
+    int errors_4 = 0;
 
     errors_0 = run_brain_bit_only();
 
     errors_1 = run_aes_only(N_BATCH);
 
-    errors_2 = run_brain_bit_and_aes();
-    
-    errors_3 = run_brain_bit_and_aes_p2p();
+    errors_2 = run_both_mem_1x1(1);
+    errors_3 = run_both_p2p_1x1(1);
 
-    return (errors_0 + errors_1 + errors_2 + errors_3);
+    // errors_2 = run_both_mem_1x1(10);
+    // errors_3 = run_both_p2p_1x1(10);
+
+    // errors_2 = run_both_mem_1x1(100);
+    // errors_3 = run_both_p2p_1x1(100);
+
+    run_both_p2p_2x1(1);
+    run_both_p2p_2x1(10);
+    run_both_p2p_2x1(100);
+
+    run_both_p2p_3x1(1);
+    run_both_p2p_3x1(10);
+    run_both_p2p_3x1(100);
+
+    run_both_p2p_4x1(1);
+    run_both_p2p_4x1(10);
+    run_both_p2p_4x1(100);
+
+    run_both_p2p_4x4(1);
+    run_both_p2p_4x4(10);
+    run_both_p2p_4x4(100);
+
+    run_both_p2p_3x2(1);
+    run_both_p2p_3x2(10);
+    run_both_p2p_3x2(100);
+
+
+    // errors_4 = run_both_p2p_1x2();
+
+    total_errors = errors_0 + errors_1 + errors_2 + errors_3 + errors_4;
+    printf("\n---> summary: errors_0 = %d, errors_1 = %d, errors_2 = %d, errors_3 = %d\n",
+           errors_0, errors_1, errors_2, errors_3);
+    return total_errors;
 }

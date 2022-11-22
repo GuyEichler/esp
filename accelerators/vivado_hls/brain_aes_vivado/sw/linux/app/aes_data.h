@@ -1,8 +1,8 @@
 #define N_TESTS 10
 
-static unsigned ecb_raw_encrypt_count[N_TESTS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+static unsigned ecb_count[N_TESTS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-static unsigned ecb_raw_encrypt_key[N_TESTS][4] = {
+static unsigned ecb_key[N_TESTS][4] = {
     {0xedfdb257, 0xcb37cdf1, 0x82c5455b, 0x0c0efebb},
     {0x7723d87d, 0x773a8bbf, 0xe1ae5b08, 0x1235b566},
     {0x280afe06, 0x3216a10b, 0x9cad9b20, 0x95552b16},
@@ -13,10 +13,10 @@ static unsigned ecb_raw_encrypt_key[N_TESTS][4] = {
     {0x0a53aa7a, 0x3e4a4f36, 0x4e8c6c72, 0x24af5501},
     {0xb80bcc92, 0x9052cb54, 0x50479442, 0xe2b809ce},
     {0xebea9c6a, 0x82213a00, 0xac1d22fa, 0xea22116f}};
-static unsigned ecb_raw_encrypt_key_bytes[N_TESTS] = {4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4};
-static unsigned ecb_raw_encrypt_key_words[N_TESTS] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
+static unsigned ecb_key_bytes[N_TESTS] = {4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4, 4*4};
+static unsigned ecb_key_words[N_TESTS] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
 
-static unsigned ecb_raw_encrypt_plaintext[N_TESTS][40] = {
+static unsigned ecb_plaintext[N_TESTS][40] = {
     {0x1695fe47, 0x5421cace, 0x3557daca, 0x01f445ff},
     {0x1b0a69b7, 0xbc534c16, 0xcecffae0, 0x2cc53231, 0x90ceb413, 0xf1db3e9f, 0x0f79ba65, 0x4c54b60e},
     {0x6f172bb6, 0xec364833, 0x411841a8, 0xf9ea2051, 0x735d6005, 0x38a9ea5e, 0x8cd2431a, 0x432903c1, 0xd6178988, 0xb616ed76, 0xe00036c5, 0xb28ccd8b},
@@ -27,10 +27,10 @@ static unsigned ecb_raw_encrypt_plaintext[N_TESTS][40] = {
     {0xeaf1760c, 0x0f25310d, 0xada6debe, 0xb966304d, 0xb7a9f1b2, 0xd1c3af92, 0x2623b263, 0x649031d2, 0x99b3c561, 0x46d61d55, 0xb6ebf4cf, 0x8dd04039, 0xa4d1ace3, 0x146f49ee, 0x915f806a, 0xfad64cbb, 0x2d04a641, 0x20de4038, 0x2e2175dc, 0xae9480d1, 0xca8dedc3, 0x8fb64e4a, 0x40112f10, 0xf03a4c35, 0x4fed01f2, 0xc5c7017d, 0xbd514b2d, 0x443a5adf, 0xd2e49c98, 0x6723266c, 0xda41a69e, 0x6e459908},
     {0x8177d79c, 0x8f239178, 0x186b4dc5, 0xf1df2ea7, 0xfee7d0db, 0x535489ef, 0x983aefb3, 0xb2029aeb, 0xa0bb2b46, 0xa2b18c94, 0xa1417a33, 0xcbeb41ca, 0x7ea9c73a, 0x677fccd2, 0xeb5470c3, 0xc500f6d3, 0xf1a6c755, 0xc944ba58, 0x6f88921f, 0x6ae6c9d1, 0x94e78c72, 0x33c40612, 0x6633e144, 0xc3810ad2, 0x3ee1b5af, 0x4c04a22d, 0x49e99e70, 0x17f74c23, 0x09492569, 0xff49be17, 0xd2804920, 0xf2ac5f51, 0x4d13fd3e, 0x7318cc7c, 0xf80ca510, 0x1a465428},
     {0x451f4566, 0x3b44fd00, 0x5f3c288a, 0xe57b3838, 0x83f02d9a, 0xd3dc1715, 0xf9e3d694, 0x8564257b, 0x9b06d7dd, 0x51935fee, 0x580a96bb, 0xdfefb918, 0xb4e6b1da, 0xac809847, 0x465578cb, 0x8b5356ed, 0x38556f80, 0x1ff7c11e, 0xcba9cdd2, 0x63039c15, 0xd05900fc, 0x228e1caf, 0x302d261d, 0x7fb56cee, 0x663595b9, 0x6f192a78, 0xff445539, 0x3a5fe816, 0x2170a066, 0xfdaeac35, 0x019469f2, 0x2b347068, 0x6bced2f0, 0x07a1a2e4, 0x3e01b456, 0x2caaa502, 0xed541b82, 0x05874ec1, 0xffb1c8b2, 0x55766942}};
-static unsigned ecb_raw_encrypt_plaintext_bytes[N_TESTS] = {4*4, 8*4, 12*4, 16*4, 20*4, 24*4, 28*4, 32*4, 36*4, 40*4};
-static unsigned ecb_raw_encrypt_plaintext_words[N_TESTS] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
+static unsigned ecb_plaintext_bytes[N_TESTS] = {4*4, 8*4, 12*4, 16*4, 20*4, 24*4, 28*4, 32*4, 36*4, 40*4};
+static unsigned ecb_plaintext_words[N_TESTS] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
 
-static unsigned ecb_raw_encrypt_ciphertext[N_TESTS][40] = {
+static unsigned ecb_ciphertext[N_TESTS][40] = {
     {0x7888beae, 0x6e7a4263, 0x32a7eaa2, 0xf808e637},
     {0xad5b0895, 0x15e78210, 0x87c61652, 0xdc477ab1, 0xf2cc6331, 0xa70dfc59, 0xc9ffb0c7, 0x23c682f6},
     {0x4cc2a8f1, 0x3c8c7c36, 0xed6a814d, 0xb7f26900, 0xc7e04df4, 0x9cbad916, 0xce6a44d0, 0xae4fe7ed, 0xc0b40279, 0x4675b369, 0x4933ebbc, 0x356525d8},
@@ -41,23 +41,23 @@ static unsigned ecb_raw_encrypt_ciphertext[N_TESTS][40] = {
     {0x5ece70a4, 0x4da41bc7, 0xcfb9b582, 0xea9ce098, 0x0030ec4a, 0xf331e764, 0x99961f88, 0x860aa055, 0x4aba3ecb, 0xf77ca429, 0x3a3fee85, 0x4a2caf3a, 0xe800343f, 0xb4521388, 0xb16b6dc5, 0x99b3d60b, 0xf82777f9, 0x8e1a8d04, 0xab9cd54d, 0xd9a24809, 0x5795d4df, 0xe4858bfd, 0x9a05f54c, 0x795bb086, 0xe15f7c22, 0x228184ec, 0x66a9ca10, 0xb1cf71a6, 0xbb9303c5, 0xcd1dcc05, 0x6460a86d, 0xf651f053},
     {0x5befb306, 0x2a7a7246, 0xaf1f77b0, 0xec0ac614, 0xe28be06a, 0xc2c81b19, 0xe5a0481b, 0xf160f9f2, 0xbc43f28f, 0x65487876, 0x39e4ce3e, 0x0f1e9547, 0x5f0e81ce, 0xb793004c, 0x8e46670e, 0xbd48b866, 0xd5b43d10, 0x4874ead4, 0xbe8a236b, 0xf90b48f8, 0x62f7e252, 0xdec4475f, 0xdbb841a6, 0x62efcd25, 0xed64b291, 0x0e9baaea, 0x9466e413, 0xa4241438, 0xb31df0bd, 0x3df9a16f, 0x46416367, 0x54e25986, 0x1728aa7d, 0xdf435cc5, 0x1f54f79a, 0x1db25f52},
     {0x01043053, 0xf832ef9b, 0x911ed387, 0xba577451, 0xe30d51d4, 0xb6b11f31, 0x9d4cd539, 0xd067b7f4, 0xf9b4f41f, 0x7f3d4e92, 0x0c57cbe2, 0xb5e1885a, 0xa66203ae, 0x493e93a1, 0xdf63793a, 0x9563c176, 0xbc6775dd, 0x09cc9161, 0xe278a01b, 0xeb8fd8a1, 0x9200326b, 0xd95abc5f, 0x716768e3, 0x4f90b505, 0x23d30fda, 0xbb103a3b, 0xc020afbb, 0xb0cb3bd2, 0xad512a6f, 0xea79f8d6, 0x4cef3474, 0x58dec48b, 0xe89451cb, 0x0b807d73, 0x593f273d, 0x9fc521b7, 0x89a77524, 0x404f43e0, 0x0f20b3b7, 0x7b938b1a}};
-static unsigned ecb_raw_encrypt_ciphertext_bytes[N_TESTS] = {4*4, 8*4, 12*4, 16*4, 20*4, 24*4, 28*4, 32*4, 36*4, 40*4};
-static unsigned ecb_raw_encrypt_ciphertext_words[N_TESTS] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
+static unsigned ecb_ciphertext_bytes[N_TESTS] = {4*4, 8*4, 12*4, 16*4, 20*4, 24*4, 28*4, 32*4, 36*4, 40*4};
+static unsigned ecb_ciphertext_words[N_TESTS] = {4, 8, 12, 16, 20, 24, 28, 32, 36, 40};
 
 
-// for brain_bit + aes
-static unsigned ecb_raw_encrypt_key_test1[1][4] = {
+// for brain_bit + aes p2p 1x1
+static unsigned ecb_key_p2p_1x1[1][4] = {
     {0xedfdb257, 0xcb37cdf1, 0x82c5455b, 0x0c0efebb}};
-static unsigned ecb_raw_encrypt_key_bytes_test1[1] = {4*4};
-static unsigned ecb_raw_encrypt_key_words_test1[1] = {4};
+static unsigned ecb_key_bytes_p2p_1x1[1] = {4*4};
+static unsigned ecb_key_words_p2p_1x1[1] = {4};
 
-static unsigned ecb_raw_encrypt_plaintext_test1[1][4] = {
+static unsigned ecb_plaintext_p2p_1x1[1][4] = {
     {0x1695fe47, 0x5421cace, 0x3557daca, 0x01f445ff}};
-static unsigned ecb_raw_encrypt_plaintext_bytes_test1[1] = {4*4};
-static unsigned ecb_raw_encrypt_plaintext_words_test1[1] = {4};
+static unsigned ecb_plaintext_bytes_p2p_1x1[1] = {4*4};
+static unsigned ecb_plaintext_words_p2p_1x1[1] = {4};
 
-static unsigned ecb_raw_encrypt_ciphertext_test1[1][4] = {
+static unsigned ecb_ciphertext_p2p_1x1[1][4] = {
     {0xf1faabc3, 0x1b36fac0, 0x631231b6, 0x3a1a2601}};
-static unsigned ecb_raw_encrypt_ciphertext_bytes_test1[1] = {4*4};
-static unsigned ecb_raw_encrypt_ciphertext_words_test1[1] = {4};
+static unsigned ecb_ciphertext_bytes_p2p_1x1[1] = {4*4};
+static unsigned ecb_ciphertext_words_p2p_1x1[1] = {4};
 

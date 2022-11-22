@@ -1,12 +1,12 @@
 // Copyright (c) 2011-2022 Columbia University, System Level Design Group
 // SPDX-License-Identifier: Apache-2.0
-#ifndef __ESP_CFG_000_H__
-#define __ESP_CFG_000_H__
+#ifndef __CFG_P2P_2x1_H__
+#define __CFG_P2P_2x1_H__
 
 #include "libesp.h"
 #include "brain_aes_vivado.h"
 
-struct brain_bit_vivado_access brain_bit_cfg_000[] = {
+struct brain_bit_vivado_access brain_bit_cfg_p2p_2x1_0[] = {
 	{
 		/* <<--descriptor-->> */
 		.avg = AVG,
@@ -21,12 +21,32 @@ struct brain_bit_vivado_access brain_bit_cfg_000[] = {
 		.src_offset = 0,
 		.dst_offset = 0,
 		.esp.coherence = ACC_COH_NONE,
-		.esp.p2p_store = 0,
+		.esp.p2p_store = 1,
 		.esp.p2p_nsrcs = 0,
 		.esp.p2p_srcs = {"", "", "", ""},
 	}};
 
-struct aes_cxx_catapult_access aes_cxx_cfg_000[] = {
+struct brain_bit_vivado_access brain_bit_cfg_p2p_2x1_1[] = {
+	{
+		/* <<--descriptor-->> */
+		.avg = AVG,
+		.key_length = KEY_LENGTH,
+		.std = STD,
+		.R = R,
+		.L = L,
+		.key_batch = KEY_BATCH,
+		.key_num = KEY_NUM,
+		.val_num = VAL_NUM,
+		.tot_iter = TOT_ITER,
+		.src_offset = 0,
+		.dst_offset = 0,
+		.esp.coherence = ACC_COH_NONE,
+		.esp.p2p_store = 1,
+		.esp.p2p_nsrcs = 0,
+		.esp.p2p_srcs = {"", "", "", ""},
+	}};
+
+struct aes_cxx_catapult_access aes_cxx_cfg_p2p_2x1[] = {
 	{
 		/* <<--descriptor-->> */
 		.oper_mode = OPER_MODE,
@@ -41,24 +61,28 @@ struct aes_cxx_catapult_access aes_cxx_cfg_000[] = {
 		.dst_offset = 0,
 		.esp.coherence = ACC_COH_NONE,
 		.esp.p2p_store = 0,
-		.esp.p2p_nsrcs = 0,
-		.esp.p2p_srcs = {"", "", "", ""},
+		.esp.p2p_nsrcs = 2,
+		.esp.p2p_srcs = {"brain_bit_vivado.0", "brain_bit_vivado.1", "", ""},
 	}};
 
-esp_thread_info_t cfg_brain_bit_000[] = {
+esp_thread_info_t cfg_p2p_2x1[] = {
 	{
 		.run = true,
 		.devname = "brain_bit_vivado.0",
 		.ioctl_req = BRAIN_BIT_VIVADO_IOC_ACCESS,
-		.esp_desc = &(brain_bit_cfg_000[0].esp),
-	}};
-
-esp_thread_info_t cfg_aes_000[] = {
+		.esp_desc = &(brain_bit_cfg_p2p_2x1_0[0].esp),
+	},
+	{
+		.run = true,
+		.devname = "brain_bit_vivado.1",
+		.ioctl_req = BRAIN_BIT_VIVADO_IOC_ACCESS,
+		.esp_desc = &(brain_bit_cfg_p2p_2x1_1[0].esp),
+	},
 	{
 		.run = true,
 		.devname = "aes_cxx_catapult.0",
 		.ioctl_req = AES_CXX_CATAPULT_IOC_ACCESS,
-		.esp_desc = &(aes_cxx_cfg_000[0].esp),
+		.esp_desc = &(aes_cxx_cfg_p2p_2x1[0].esp),
 	}};
 
-#endif /* __ESP_CFG_000_H__ */
+#endif /* __CFG_P2P_2x1_H__ */

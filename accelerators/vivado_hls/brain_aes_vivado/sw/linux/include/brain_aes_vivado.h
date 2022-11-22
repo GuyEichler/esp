@@ -17,7 +17,16 @@
 #include <esp.h>
 #include <esp_accelerator.h>
 
-struct brain_bit_vivado_access {
+#ifndef max
+#define max(a,b)            (((a) > (b)) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif
+
+struct brain_bit_vivado_access
+{
 	struct esp_access esp;
 	/* <<--regs-->> */
 	unsigned avg;
@@ -33,7 +42,8 @@ struct brain_bit_vivado_access {
 	unsigned dst_offset;
 };
 
-struct aes_cxx_catapult_access {
+struct aes_cxx_catapult_access
+{
 	struct esp_access esp;
 	/* <<--regs-->> */
 	unsigned oper_mode;
@@ -48,9 +58,8 @@ struct aes_cxx_catapult_access {
 	unsigned dst_offset;
 };
 
-
-#define BRAIN_BIT_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct brain_bit_vivado_access)
-#define AES_CXX_CATAPULT_IOC_ACCESS	_IOW ('S', 0, struct aes_cxx_catapult_access)
+#define BRAIN_BIT_VIVADO_IOC_ACCESS _IOW('S', 0, struct brain_bit_vivado_access)
+#define AES_CXX_CATAPULT_IOC_ACCESS _IOW('S', 0, struct aes_cxx_catapult_access)
 
 typedef int32_t token_t;
 #define DATA_BITWIDTH 32
@@ -103,5 +112,72 @@ unsigned tag_bytes = TAG_BYTES;
 unsigned batch = BATCH;
 
 #define NACC 1
+
+
+// brain_bit:
+ unsigned brain_in_words_adj;
+ unsigned brain_out_words_adj;
+ unsigned brain_in_len;
+ unsigned brain_out_len;
+ unsigned brain_in_size;
+ unsigned brain_out_size;
+ unsigned brain_out_offset;
+ unsigned brain_size;
+ int brain_key_counter;
+
+// aes:
+#define N_BATCH 9
+ unsigned aes_in_words_adj;
+ unsigned aes_out_words_adj;
+ unsigned aes_in_len;
+ unsigned aes_out_len;
+ unsigned aes_in_size;
+ unsigned aes_out_size;
+ unsigned aes_out_offset;
+ unsigned aes_size_bytes;
+
+//  unsigned tag_bytes;
+/*  unsigned aad_bytes; */
+/*  unsigned in_bytes; */
+/*  unsigned out_bytes; */
+/*  unsigned iv_bytes; */
+/*  unsigned key_bytes; */
+/*  unsigned encryption; */
+/*  unsigned oper_mode; */
+
+/*  unsigned key_words; */
+/*  unsigned iv_words; */
+ unsigned aes_in_words;
+ unsigned aes_out_words;
+/*  unsigned aad_words; */
+/*  unsigned tag_words; */
+
+/*  unsigned key_size; */
+/*  unsigned iv_size; */
+//  unsigned in_size;
+//  unsigned out_size;
+/*  unsigned aad_size; */
+/*  unsigned tag_size; */
+
+
+// for run brain_bit only
+void init_parameters_brain_bit(void);
+void init_buffer_brain_bit(token_t *in, token_t *gold);
+int validate_buffer_brain_bit(token_t *out, token_t *gold);
+
+// for run aes only
+void init_parameters_aes(unsigned indx);
+void init_buffer_aes(token_t *in, token_t *gold, token_t *out, unsigned indx);
+int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigned indx);
+
+
+// for run both mem 1x1
+void init_parameters_aes_from_brain(int val_n);
+void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain);
+// void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx);
+
+
+void init_buffer_aes_p2p_1_1(token_t *in, token_t *gold, unsigned indx);
+
 
 #endif /* _BRAIN_AES_VIVADO_H_ */

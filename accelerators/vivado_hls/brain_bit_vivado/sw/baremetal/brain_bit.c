@@ -311,6 +311,25 @@ int main(int argc, char * argv[])
 			/* Validation */
 			errors = validate_buf(&mem[out_offset], gold);
 
+			// Start accelerators
+			printf("  Start...\n");
+			iowrite32(dev, CMD_REG, CMD_MASK_START);
+
+			// Wait for completion
+			done = 0;
+			while (!done) {
+				done = ioread32(dev, STATUS_REG);
+				done &= STATUS_MASK_DONE;
+			}
+			iowrite32(dev, CMD_REG, 0x0);
+
+			printf("  Done\n");
+			printf("  validating...\n");
+
+			/* Validation */
+			errors = validate_buf(&mem[out_offset], gold);
+
+
 			float total = 100 * (float) errors / (key_length*key_batch);
 			if (total > 1)
 				printf("  ... FAIL\n");

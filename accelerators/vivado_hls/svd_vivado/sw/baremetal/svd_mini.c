@@ -92,7 +92,7 @@ static int validate_buf(token_t *out, float *gold)
 	MAE_sum = 0;
 
 	for (i = 0; i < 1; i++)
-		for (j = 0; j < m*m; j++)
+		for (j = 0; j < m*m+m*p; j++)
 		{
 
 			float val = fixed32_to_float(out[i * out_words_adj + j], 11);

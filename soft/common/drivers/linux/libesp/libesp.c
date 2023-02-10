@@ -303,7 +303,7 @@ void esp_free(void *buf)
 
 void esp_dummy(void* x)
 {
-	printf("--- this is esp_dummy()\n");
+	/* printf("--- this is esp_dummy()\n"); */
 	// esp_thread_info_t* cfg = NULL;
 	unsigned nacc = 1;
 

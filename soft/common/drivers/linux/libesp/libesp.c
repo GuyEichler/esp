@@ -298,3 +298,44 @@ void esp_free(void *buf)
 {
 	remove_buf(buf);
 }
+
+
+
+void esp_dummy(void* x)
+{
+	printf("--- this is esp_dummy()\n");
+	// esp_thread_info_t* cfg = NULL;
+	unsigned nacc = 1;
+
+// struct gemm_stratus_access gemm_cfg_000[] = {
+// 	{
+// 		/* <<--descriptor-->> */
+// 		.do_relu = DO_RELU,
+// 		.transpose = TRANSPOSE,
+// 		.ninputs = NINPUTS,
+// 		.d3 = D3,
+// 		.d2 = D2,
+// 		.d1 = D1,
+// 		.st_offset = ST_OFFSET,
+// 		.ld_offset1 = LD_OFFSET1,
+// 		.ld_offset2 = LD_OFFSET2,
+// 		.src_offset = 0,
+// 		.dst_offset = 0,
+// 		.esp.coherence = ACC_COH_NONE,
+// 		.esp.p2p_store = 0,
+// 		.esp.p2p_nsrcs = 0,
+// 		.esp.p2p_srcs = {"", "", "", ""},
+// 	}
+// };
+
+//  esp_thread_info_t cfg_000[] = {
+// {	.run = true,
+// 		.devname = "gemm_stratus.0",
+// 		.ioctl_req = 0, // GEMM_STRATUS_IOC_ACCESS,
+// 		.esp_desc = x, //&(gemm_cfg_000[0].esp),
+// }
+// };
+
+
+	esp_run(x, nacc);
+}

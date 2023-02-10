@@ -4,7 +4,7 @@
 #include "gemm_stratus.h"
 
 //#include "cfg.h"
-//#include <libesp.h>
+// #include <libesp.h>
 
 #include <time.h>
 #include <bits/stdc++.h>
@@ -22,10 +22,45 @@
 #define LD_OFFSET1 0
 #define LD_OFFSET2 (NINPUTS * (D1 * D2))
 
-// extern "C" void esp_dummy();
+extern "C" void esp_dummy(void * x);
+
+
+// struct gemm_stratus_access gemm_cfg_000[] = {
+// 	{
+// 		/* <<--descriptor-->> */
+// 		.do_relu = DO_RELU,
+// 		.transpose = TRANSPOSE,
+// 		.ninputs = NINPUTS,
+// 		.d3 = D3,
+// 		.d2 = D2,
+// 		.d1 = D1,
+// 		.st_offset = ST_OFFSET,
+// 		.ld_offset1 = LD_OFFSET1,
+// 		.ld_offset2 = LD_OFFSET2,
+// 		.src_offset = 0,
+// 		.dst_offset = 0,
+// 		.esp.coherence = ACC_COH_NONE,
+// 		.esp.p2p_store = 0,
+// 		.esp.p2p_nsrcs = 0,
+// 		.esp.p2p_srcs = {"", "", "", ""},
+// 	}
+// };
+
+// extern "C" {
+// extern esp_thread_info_t cfg_000 = {
+	
+// 		.run = true,
+// 		.devname = "gemm_stratus.0",
+// 		.ioctl_req = GEMM_STRATUS_IOC_ACCESS
+// 		//.esp_desc = &(gemm_cfg_000[0].esp),
+	
+// };
+// }
 
 using namespace Eigen;
 using namespace std;
+
+void* cfg;
 
     template<typename MatrixType>
     MatrixType operator*(const MatrixType &A, const MatrixType &B)
@@ -33,7 +68,8 @@ using namespace std;
 
         // cout << "CUSTOM" << endl;
 
-        // esp_dummy();
+        // esp_run(cfg_000, 1);
+        esp_dummy(cfg);
 
         int rowsA = A.rows();
         int colsA = A.cols();
@@ -86,8 +122,10 @@ using namespace std;
 
 // extern "C" {
 
-    void c_run_gemm()
+    void c_run_gemm(void* x)
     {
+        cfg = x;
+
         // MatrixXf A(2, 2);
         // A << 1, 2,
         //     3, 4;

@@ -5,7 +5,7 @@ extern "C" {
 
 	/* template<typename MatrixType> */
 	/* MatrixType operator*(const MatrixType &A, const MatrixType &B); */
-	void c_run_gemm();
+	void c_run_gemm(void* x);
 	/* void printR(); */
 
 #ifdef __cplusplus

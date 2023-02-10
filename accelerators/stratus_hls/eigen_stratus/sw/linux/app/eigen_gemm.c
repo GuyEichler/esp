@@ -138,6 +138,8 @@ static void sw_run(int32_t do_relu, int32_t transpose, int32_t ninputs,
     printf("    Software execution time: %llu ns\n", hw_ns);
 }
 
+
+
 int main(int argc, char **argv)
 {
     /* int test, n_tests, start_test = 1; */
@@ -244,7 +246,10 @@ int main(int argc, char **argv)
 
 	//esp_dummy();
 
-	c_run_gemm();
+
+
+
+	c_run_gemm((void*)cfg_000);
 
 	return 0;
 }

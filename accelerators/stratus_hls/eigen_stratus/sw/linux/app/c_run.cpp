@@ -1,15 +1,28 @@
 #include "c_run.h"
 #include "eigen/Eigen/Dense"
 //#include "eigen/Eigen/SVD"
-//#include "gemm_stratus.h"
+#include "gemm_stratus.h"
 
 //#include "cfg.h"
-#include "libesp.h"
+//#include <libesp.h>
 
 #include <time.h>
 #include <bits/stdc++.h>
 #include <stdio.h>
 #include <iostream>
+
+/* <<--params-def-->> */
+#define DO_RELU 0
+#define TRANSPOSE 1
+#define NINPUTS 2
+#define D3 8
+#define D2 8
+#define D1 8
+#define ST_OFFSET (NINPUTS * (D1 * D2 + D2 * D3))
+#define LD_OFFSET1 0
+#define LD_OFFSET2 (NINPUTS * (D1 * D2))
+
+// extern "C" void esp_dummy();
 
 using namespace Eigen;
 using namespace std;
@@ -20,7 +33,7 @@ using namespace std;
 
         // cout << "CUSTOM" << endl;
 
-        esp_dummy();
+        // esp_dummy();
 
         int rowsA = A.rows();
         int colsA = A.cols();

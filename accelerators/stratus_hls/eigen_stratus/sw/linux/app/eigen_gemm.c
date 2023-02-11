@@ -7,7 +7,7 @@
 
 static void validate_buffer(token_t *acc_buf, native_t *sw_buf, unsigned len)
 {
-    int i;
+    int      i;
     native_t val;
     unsigned errors = 0;
 
@@ -16,23 +16,22 @@ static void validate_buffer(token_t *acc_buf, native_t *sw_buf, unsigned len)
     for (i = 0; i < len; i++) {
 
 #ifdef __FIXED
-	val = fx2float(acc_buf[i], FX_IL);
+        val = fx2float(acc_buf[i], FX_IL);
 #else
-	val = acc_buf[i];
+        val        = acc_buf[i];
 #endif
-	if (sw_buf[i] != val) {
-	    errors++;
-	    if (errors <= MAX_PRINTED_ERRORS)
-		printf("index %d : output %d : expected %d <-- ERROR\n", i, (int) val, (int) sw_buf[i]);
-	}
+        if (sw_buf[i] != val) {
+            errors++;
+            if (errors <= MAX_PRINTED_ERRORS)
+                printf("index %d : output %d : expected %d <-- ERROR\n", i, (int)val, (int)sw_buf[i]);
+        }
     }
 
     if (!errors)
-	printf("\n  ** Test PASSED! **\n");
+        printf("\n  ** Test PASSED! **\n");
     else
-	printf("\n  ** Test FAILED! **\n");
+        printf("\n  ** Test FAILED! **\n");
 }
-
 
 /* User-defined code */
 static void init_buffer(token_t *acc_buf, native_t *sw_buf, unsigned in_len)
@@ -42,47 +41,45 @@ static void init_buffer(token_t *acc_buf, native_t *sw_buf, unsigned in_len)
     printf("  Initialize inputs\n");
 
     for (i = 0; i < in_len; i++) {
-	native_t val = i % 17 - 8;
+        native_t val = i % 17 - 8;
 #ifdef __FIXED
         acc_buf[i] = float2fx(val, FX_IL);
 #else
         acc_buf[i] = val;
 #endif
-	sw_buf[i] = val;
+        sw_buf[i] = val;
     }
 }
 
-
 /* User-defined code */
-static void init_parameters(int test, int32_t do_relu, int32_t transpose, int32_t ninputs,
-			    int32_t d3, int32_t d2, int32_t d1,
-			    unsigned *in_len, unsigned *in1_len, unsigned *out_len,
-			    unsigned *in_size, unsigned *out_size, unsigned *size)
+static void init_parameters(int test, int32_t do_relu, int32_t transpose, int32_t ninputs, int32_t d3, int32_t d2,
+                            int32_t d1, unsigned *in_len, unsigned *in1_len, unsigned *out_len, unsigned *in_size,
+                            unsigned *out_size, unsigned *size)
 {
-    int32_t ld_offset1, ld_offset2, st_offset;
+    int32_t  ld_offset1, ld_offset2, st_offset;
     unsigned in2_len;
-    
-    *in1_len = round_up(ninputs * d1 * d2, DMA_WORD_PER_BEAT(sizeof(token_t)));
-    in2_len = round_up(ninputs * d2 * d3, DMA_WORD_PER_BEAT(sizeof(token_t)));
-    *in_len = *in1_len + in2_len;
-    *out_len = round_up(ninputs * d1 * d3, DMA_WORD_PER_BEAT(sizeof(token_t)));
-    *in_size = *in_len * sizeof(token_t);
+
+    *in1_len  = round_up(ninputs * d1 * d2, DMA_WORD_PER_BEAT(sizeof(token_t)));
+    in2_len   = round_up(ninputs * d2 * d3, DMA_WORD_PER_BEAT(sizeof(token_t)));
+    *in_len   = *in1_len + in2_len;
+    *out_len  = round_up(ninputs * d1 * d3, DMA_WORD_PER_BEAT(sizeof(token_t)));
+    *in_size  = *in_len * sizeof(token_t);
     *out_size = *out_len * sizeof(token_t);
-    *size = *in_size + *out_size;
+    *size     = *in_size + *out_size;
 
     ld_offset1 = 0;
     ld_offset2 = *in1_len;
-    st_offset = *in_len;
+    st_offset  = *in_len;
 
-    gemm_cfg_000[0].do_relu = do_relu;
-    gemm_cfg_000[0].transpose = transpose;
-    gemm_cfg_000[0].ninputs = ninputs;
-    gemm_cfg_000[0].d1 = d1;
-    gemm_cfg_000[0].d2 = d2;
-    gemm_cfg_000[0].d3 = d3;
+    gemm_cfg_000[0].do_relu    = do_relu;
+    gemm_cfg_000[0].transpose  = transpose;
+    gemm_cfg_000[0].ninputs    = ninputs;
+    gemm_cfg_000[0].d1         = d1;
+    gemm_cfg_000[0].d2         = d2;
+    gemm_cfg_000[0].d3         = d3;
     gemm_cfg_000[0].ld_offset1 = ld_offset1;
     gemm_cfg_000[0].ld_offset2 = ld_offset2;
-    gemm_cfg_000[0].st_offset = st_offset;
+    gemm_cfg_000[0].st_offset  = st_offset;
 
     // print test info
     printf("  Prepare test %d parameters\n", test);
@@ -97,39 +94,34 @@ static void init_parameters(int test, int32_t do_relu, int32_t transpose, int32_
     printf("    .ld_offset2 = %d\n", ld_offset2);
 }
 
-static void sw_run(int32_t do_relu, int32_t transpose, int32_t ninputs,
-		   int32_t d3, int32_t d2, int32_t d1,
-		   native_t *in1, native_t *in2, native_t *out)
+static void sw_run(int32_t do_relu, int32_t transpose, int32_t ninputs, int32_t d3, int32_t d2, int32_t d1,
+                   native_t *in1, native_t *in2, native_t *out)
 {
-    int i, j, k, l;
+    int             i, j, k, l;
     struct timespec th_start, th_end;
-    native_t *in1_l, *in2_l, *out_l;
+    native_t *      in1_l, *in2_l, *out_l;
 
     gettime(&th_start);
 
-    for (l = 0; l < ninputs; ++l)
-    {
-	in1_l = &in1[l * d1 * d2];
-	in2_l = &in2[l * d2 * d3];
-	out_l = &out[l * d1 * d3];
+    for (l = 0; l < ninputs; ++l) {
+        in1_l = &in1[l * d1 * d2];
+        in2_l = &in2[l * d2 * d3];
+        out_l = &out[l * d1 * d3];
 
-	for (i = 0; i < d1; ++i)
-	{
-	    for (j = 0; j < d3; ++j)
-	    {
-		native_t accumulator = 0.0;
+        for (i = 0; i < d1; ++i) {
+            for (j = 0; j < d3; ++j) {
+                native_t accumulator = 0.0;
 
-		for (k = 0; k < d2; ++k)
-		{
-		    int mtx_in1_i = i * d2 + k;
-		    int mtx_in2_i = transpose ? (j * d2 + k) : (k * d3 + j);
+                for (k = 0; k < d2; ++k) {
+                    int mtx_in1_i = i * d2 + k;
+                    int mtx_in2_i = transpose ? (j * d2 + k) : (k * d3 + j);
 
-		    accumulator += in1_l[mtx_in1_i] * in2_l[mtx_in2_i];
-		}
+                    accumulator += in1_l[mtx_in1_i] * in2_l[mtx_in2_i];
+                }
 
-		out_l[i * d3 + j] = accumulator;
-	    }
-	}
+                out_l[i * d3 + j] = accumulator;
+            }
+        }
     }
 
     gettime(&th_end);
@@ -137,8 +129,6 @@ static void sw_run(int32_t do_relu, int32_t transpose, int32_t ninputs,
     unsigned long long hw_ns = ts_subtract(&th_start, &th_end);
     printf("    Software execution time: %llu ns\n", hw_ns);
 }
-
-
 
 int main(int argc, char **argv)
 {
@@ -244,39 +234,37 @@ int main(int argc, char **argv)
 
     /* printf("\n====== %s ======\n\n", cfg_000[0].devname); */
 
-	//esp_dummy();
+    // esp_dummy();
 
-	unsigned in_len;
-	unsigned in1_len;
-	unsigned out_len;
-	unsigned in_size;
-	unsigned out_size;
-	unsigned size;
+    unsigned in_len;
+    unsigned in1_len;
+    unsigned out_len;
+    unsigned in_size;
+    unsigned out_size;
+    unsigned size;
 
-	token_t *acc_buf;
+    token_t *acc_buf;
 
-	acc_buf = (token_t *) esp_alloc(MAX_SIZE);
-	cfg_000[0].hw_buf = acc_buf;
+    acc_buf           = (token_t *)esp_alloc(MAX_SIZE);
+    cfg_000[0].hw_buf = acc_buf;
 
-	unsigned* do_relu = &(gemm_cfg_000[0].do_relu); //filters negative features
-	unsigned* transpose = &(gemm_cfg_000[0].transpose); //If one of the matrices is transposed
-	unsigned* ninputs = &(gemm_cfg_000[0].ninputs); //how many batches of matrix couples
-	unsigned* d3 = &(gemm_cfg_000[0].d3); //cols in rhs matrix
-	unsigned* d2 = &(gemm_cfg_000[0].d2); //cols in lhs matrix, rows in rhs matrix
-	unsigned* d1 = &(gemm_cfg_000[0].d1); //rows in lhs matrix
-	unsigned* st_offset = &(gemm_cfg_000[0].st_offset);
-	unsigned* ld_offset1 = &(gemm_cfg_000[0].ld_offset1);
-	unsigned* ld_offset2 = &(gemm_cfg_000[0].ld_offset2);
-	unsigned* src_offset = &(gemm_cfg_000[0].src_offset);
-	unsigned* dst_offset = &(gemm_cfg_000[0].dst_offset);
+    unsigned *do_relu    = &(gemm_cfg_000[0].do_relu);   // filters negative features
+    unsigned *transpose  = &(gemm_cfg_000[0].transpose); // If one of the matrices is transposed
+    unsigned *ninputs    = &(gemm_cfg_000[0].ninputs);   // how many batches of matrix couples
+    unsigned *d3         = &(gemm_cfg_000[0].d3);        // cols in rhs matrix
+    unsigned *d2         = &(gemm_cfg_000[0].d2);        // cols in lhs matrix, rows in rhs matrix
+    unsigned *d1         = &(gemm_cfg_000[0].d1);        // rows in lhs matrix
+    unsigned *st_offset  = &(gemm_cfg_000[0].st_offset);
+    unsigned *ld_offset1 = &(gemm_cfg_000[0].ld_offset1);
+    unsigned *ld_offset2 = &(gemm_cfg_000[0].ld_offset2);
+    unsigned *src_offset = &(gemm_cfg_000[0].src_offset);
+    unsigned *dst_offset = &(gemm_cfg_000[0].dst_offset);
 
-	c_run_gemm((void*)cfg_000 ,do_relu, transpose,
-		ninputs, d1, d2, d3,
-		st_offset, ld_offset1, ld_offset2,
-		src_offset, dst_offset, acc_buf);
+    c_run_gemm((void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2, src_offset,
+               dst_offset, acc_buf);
 
-	// free
-	esp_free(acc_buf);
+    // free
+    esp_free(acc_buf);
 
-	return 0;
+    return 0;
 }

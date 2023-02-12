@@ -1,15 +1,16 @@
 #include "c_run.h"
 #include "eigen/Eigen/Dense"
-//#include "eigen/Eigen/SVD"
+// #include "eigen/Eigen/SVD"
 #include "gemm_stratus.h"
 
-//#include "cfg.h"
+// #include "cfg.h"
 // #include <libesp.h>
 
 #include <time.h>
 #include <bits/stdc++.h>
 #include <stdio.h>
 #include <iostream>
+#include <math.h>
 
 /* <<--params-def-->> */
 #define DO_RELU    0
@@ -22,42 +23,169 @@
 #define LD_OFFSET1 0
 #define LD_OFFSET2 (NINPUTS * (D1 * D2))
 
-extern "C" void esp_dummy(void *x);
-
-// struct gemm_stratus_access gemm_cfg_000[] = {
-// 	{
-// 		/* <<--descriptor-->> */
-// 		.do_relu = DO_RELU,
-// 		.transpose = TRANSPOSE,
-// 		.ninputs = NINPUTS,
-// 		.d3 = D3,
-// 		.d2 = D2,
-// 		.d1 = D1,
-// 		.st_offset = ST_OFFSET,
-// 		.ld_offset1 = LD_OFFSET1,
-// 		.ld_offset2 = LD_OFFSET2,
-// 		.src_offset = 0,
-// 		.dst_offset = 0,
-// 		.esp.coherence = ACC_COH_NONE,
-// 		.esp.p2p_store = 0,
-// 		.esp.p2p_nsrcs = 0,
-// 		.esp.p2p_srcs = {"", "", "", ""},
-// 	}
-// };
-
-// extern "C" {
-// extern esp_thread_info_t cfg_000 = {
-
-// 		.run = true,
-// 		.devname = "gemm_stratus.0",
-// 		.ioctl_req = GEMM_STRATUS_IOC_ACCESS
-// 		//.esp_desc = &(gemm_cfg_000[0].esp),
-
-// };
-// }
+extern "C" void esp_dummy_gemm(void *x);
 
 using namespace Eigen;
 using namespace std;
+
+// -- from utility.h and utility.cc of ekf
+namespace utility
+{
+enum SensorType { LASER, RADAR };
+
+struct SensorReading {
+    long long       timestamp;
+    SensorType      sensor_type;
+    Eigen::VectorXd measurement;
+};
+
+const Eigen::VectorXd CalculateRmse(const std::vector<Eigen::VectorXd> &estimations,
+                                    const std::vector<Eigen::VectorXd> &ground_truth);
+const Eigen::MatrixXd CalculateJacobian(const Eigen::VectorXd &x_state);
+const Eigen::VectorXd PolarToCartesian(const Eigen::VectorXd &polar_vector);
+const Eigen::VectorXd CartesianToPolar(const Eigen::VectorXd &x_state);
+
+void CheckArguments(int argc, char *argv[]);
+void CheckFiles(std::ifstream &in_file, std::string &in_name, std::ofstream &out_file, std::string &out_name);
+}; // namespace utility
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
+
+namespace utility
+{
+void CheckArguments(int argc, char *argv[])
+{
+    std::string usage_instructions = "Usage instructions: ";
+    usage_instructions += argv[0];
+    usage_instructions += " path/to/input.txt output.txt";
+
+    bool has_valid_args = false;
+
+    // make sure the user has provided input and output files
+    if (argc == 1) {
+        std::cerr << usage_instructions << std::endl;
+    } else if (argc == 2) {
+        std::cerr << "Please include an output file.\n" << usage_instructions << std::endl;
+    } else if (argc == 3) {
+        has_valid_args = true;
+    } else if (argc > 3) {
+        std::cerr << "Too many arguments.\n" << usage_instructions << std::endl;
+    }
+
+    if (!has_valid_args) {
+        exit(EXIT_FAILURE);
+    }
+}
+
+void CheckFiles(ifstream &in_file, string &in_name, ofstream &out_file, string &out_name)
+{
+    if (!in_file.is_open()) {
+        std::cerr << "Cannot open input file: " << in_name << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    if (!out_file.is_open()) {
+        std::cerr << "Cannot open output file: " << out_name << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+const VectorXd CalculateRmse(const vector<VectorXd> &estimations, const vector<VectorXd> &ground_truth)
+{
+
+    VectorXd rmse(4);
+    rmse << 0, 0, 0, 0;
+    if (estimations.size() != ground_truth.size() || estimations.size() == 0) {
+        cerr << "The estimation vector size should equal ground truth\
+                        vector size. Also, the estimation vector size should\
+                        not be zero"
+             << endl;
+        return rmse;
+    }
+
+    for (int i = 0; i < estimations.size(); ++i) {
+        VectorXd residual = estimations[i] - ground_truth[i];
+        residual          = residual.array() * residual.array();
+
+        rmse += residual;
+    }
+
+    rmse /= estimations.size();
+    rmse = rmse.array().sqrt();
+
+    return rmse;
+}
+
+const MatrixXd CalculateJacobian(const VectorXd &x_state)
+{
+
+    MatrixXd Hj = MatrixXd::Zero(3, 4);
+
+    // recover state parameters
+    float px = x_state(0);
+    float py = x_state(1);
+    float vx = x_state(2);
+    float vy = x_state(3);
+
+    // pre-compute a set of terms to avoid repeated calculation
+    float c1 = px * px + py * py;
+    float c2 = sqrt(c1);
+    float c3 = (c1 * c2);
+
+    // check division by zero
+    if (fabs(c1) < 1e-4) {
+        return Hj;
+    }
+
+    // compute the Jacobian matrix
+    Hj << (px / c2), (py / c2), 0, 0, -(py / c1), (px / c1), 0, 0, py * (vx * py - vy * px) / c3,
+        px * (px * vy - py * vx) / c3, px / c2, py / c2;
+
+    return Hj;
+}
+
+const VectorXd PolarToCartesian(const VectorXd &polar_vector)
+{
+    VectorXd cart_vector(4);
+
+    float rho     = polar_vector(0);
+    float phi     = polar_vector(1);
+    float rho_dot = polar_vector(2);
+
+    float x  = rho * cos(phi);
+    float y  = rho * sin(phi);
+    float vx = rho_dot * cos(phi);
+    float vy = rho_dot * sin(phi);
+
+    cart_vector << x, y, vx, vy;
+    return cart_vector;
+}
+
+const Eigen::VectorXd CartesianToPolar(const Eigen::VectorXd &x_state)
+{
+    VectorXd polar_vector(3);
+
+    float x  = x_state(0);
+    float y  = x_state(1);
+    float vx = x_state(2);
+    float vy = x_state(3);
+
+    if (fabs(x + y) < 1e-4) {
+        x = 1e-4;
+        y = 1e-4;
+    }
+
+    float rho     = sqrt(x * x + y * y);
+    float phi     = atan2(y, x);
+    float rho_dot = (x * vx + y * vy) / rho;
+
+    polar_vector << rho, phi, rho_dot;
+    return polar_vector;
+}
+
+}; // namespace utility
+// -- end of utility.h and utility.cc of ekf
 
 void *    cfg;
 unsigned *do_relu_i;
@@ -93,7 +221,6 @@ static inline int float_to_fixed32(float value, int n_int_bits)
 
 template <typename MatrixType> MatrixType operator*(const MatrixType &A, const MatrixType &B)
 {
-
     // cout << "CUSTOM" << endl;
 
     // esp_run(cfg_000, 1);
@@ -142,7 +269,7 @@ template <typename MatrixType> MatrixType operator*(const MatrixType &A, const M
     // acc_buf_i = acc_buf;
 
     // Run gemm accelerator
-    esp_dummy(cfg);
+    esp_dummy_gemm(cfg);
 
     // Copy the result from the array into a matrix
     MatrixType C_acc(rowsA, colsB);
@@ -156,7 +283,6 @@ template <typename MatrixType> MatrixType operator*(const MatrixType &A, const M
 
 template <typename MatrixType> MatrixType CustomProductC(const MatrixType &A, const MatrixType &B)
 {
-
     // cout << "CUSTOM" << endl;
 
     // esp_run(cfg_000, 1);
@@ -242,8 +368,12 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
     // B << 5, 6,
     //     7, 8;
 
-    MatrixXf A = MatrixXf::Random(100, 500);
-    MatrixXf B = MatrixXf::Random(500, 100);
+    // MatrixXf(row, col)
+    MatrixXf A = MatrixXf::Random(10, 50);
+    MatrixXf B = MatrixXf::Random(50, 10);
+
+    // cout << "A : " << A << endl;
+    // cout << "B : " << B << endl;
 
     cout << setprecision(15) << endl;
 
@@ -294,11 +424,366 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
     cout << endl;
     cout << "Maximum difference between accelerator and C: " << C01.maxCoeff() << endl;
     cout << "Minimum difference between accelerator and C: " << C01.minCoeff() << endl;
+
+    cout << "== c_run_gemm done ==" << endl;
+    cout << endl;
 }
 
-// void printR()
-// {
-//     cout <<"\n+ Software matrix R is:\n" << R << endl;
-// }
+// -- from ekf.h and ekf.cc of ekf
+class ExtendedKalmanFilter
+{
+  public:
+    // state vector
+    Eigen::VectorXd x_;
+
+    // state covariance matrix
+    Eigen::MatrixXd P_;
+
+    // state transistion matrix
+    Eigen::MatrixXd F_;
+
+    // process covariance matrix
+    Eigen::MatrixXd Q_;
+
+    // measurement matrix
+    Eigen::MatrixXd H_;
+
+    // measurement covariance matrix
+    Eigen::MatrixXd R_;
+
+    // 4x4 Identity matrix we will need later.
+    Eigen::MatrixXd I_;
+
+    /**
+     * Prediction Predicts the state and the state covariance
+     * using the process model
+     * @param delta_T Time between k and k+1 in s
+     */
+    void Predict();
+
+    /**
+     * Updates the state by using standard Kalman Filter equations
+     * @param z The measurement at k+1
+     */
+    void Update(const Eigen::VectorXd &z);
+    void UpdateEkf(const Eigen::VectorXd &z);
+
+  private:
+    // Keep things DRY
+    void CallRestOfUpdate(const Eigen::VectorXd &z);
+};
+
+using utility::CartesianToPolar;
+
+void ExtendedKalmanFilter::Predict()
+{
+    x_ = F_ * x_;
+    // [kuanlin]: matrix multiplication here:
+    // P_ = F_ * P_ * F_.transpose() + Q_;
+    P_ = (F_.operator*(P_)).operator*(F_.transpose()) + Q_;
+}
+
+void ExtendedKalmanFilter::Update(const VectorXd &z)
+{
+    VectorXd y = z - H_ * x_; // error calculation
+    CallRestOfUpdate(y);
+}
+
+void ExtendedKalmanFilter::UpdateEkf(const VectorXd &z)
+{
+    VectorXd hx = CartesianToPolar(x_);
+    VectorXd y  = z - hx;
+    CallRestOfUpdate(y);
+}
+
+void ExtendedKalmanFilter::CallRestOfUpdate(const VectorXd &y)
+{
+    MatrixXd Ht = H_.transpose();
+
+    // [kuanlin]: matrix multiplication here:
+    // MatrixXd PHt = P_ * Ht;
+    // MatrixXd S   = H_ * PHt + R_;
+    MatrixXd PHt = P_.operator*(Ht);
+    MatrixXd S   = H_.operator*(PHt) + R_;
+
+    MatrixXd K = PHt * S.inverse();
+
+    // New state
+    x_ = x_ + (K * y);
+
+    // [kuanlin]: matrix multiplication here:
+    // P_ = (I_ - K * H_) * P_;
+    P_ = (I_ - K.operator*(H_)).operator*(P_);
+}
+// -- end of ekf.h and ekf.cc of ekf
+
+// -- from fusion_ekf.h and fusion_ekf.cc of ekf
+class FusionEkf
+{
+
+  public:
+    FusionEkf();
+    void            ProcessMeasurement(utility::SensorReading &reading);
+    Eigen::VectorXd current_estimate();
+
+  private:
+    bool      is_initialized_;
+    long long previous_timestamp_;
+
+    // This Fusion class handles LIDAR and RADAR
+    // So we set the sensor measurement maxtrices and covar for the sensors
+    Eigen::MatrixXd R_laser_;
+    Eigen::MatrixXd H_laser_;
+    Eigen::MatrixXd R_radar_;
+
+    // since this is a constant velocity model. we add the accel as noise.
+    float noise_ax_;
+    float noise_ay_;
+
+    /**
+     * Extended Kalman Filter update and prediction math lives in here.
+     */
+    ExtendedKalmanFilter ekf_;
+
+    void UpdateFQ(float dt);
+};
+
+using utility::SensorReading;
+using utility::SensorType;
+
+FusionEkf::FusionEkf()
+{
+    is_initialized_     = false;
+    previous_timestamp_ = 0;
+
+    // initializing matrices
+    R_laser_ = MatrixXd(2, 2);
+    R_radar_ = MatrixXd(3, 3);
+    H_laser_ = MatrixXd(2, 4);
+
+    // measurement covariance matrix - laser
+    R_laser_ << 0.0225, 0, 0, 0.0225;
+
+    // measurement covariance matrix - radar
+    R_radar_ << 0.09, 0, 0, 0, 0.0009, 0, 0, 0, 0.09;
+
+    H_laser_ << 1, 0, 0, 0, 0, 1, 0, 0;
+
+    noise_ax_ = 9;
+    noise_ay_ = 9;
+
+    // setup efk F
+    ekf_.F_ = MatrixXd(4, 4);
+    ekf_.F_ << 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1;
+
+    // setup efk P
+    ekf_.P_ = MatrixXd(4, 4);
+    ekf_.P_ << 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1000, 0, 0, 0, 0, 1000;
+
+    ekf_.Q_ = MatrixXd::Zero(4, 4);
+    ekf_.I_ = MatrixXd::Identity(4, 4);
+}
+
+Eigen::VectorXd FusionEkf::current_estimate() { return ekf_.x_; }
+
+void FusionEkf::UpdateFQ(float dt)
+{
+    float dt_2 = dt * dt;
+    float dt_3 = dt_2 * dt;
+    float dt_4 = dt_3 * dt;
+
+    // Modify the F matrix so that the time is integrated
+    ekf_.F_(0, 2) = dt;
+    ekf_.F_(1, 3) = dt;
+
+    // Modify the Q matrix so that the time is integrated
+    ekf_.Q_(0, 0) = (dt_4 / 4) * noise_ax_;
+    ekf_.Q_(0, 2) = (dt_3 / 2) * noise_ax_;
+
+    ekf_.Q_(1, 1) = (dt_4 / 4) * noise_ay_;
+    ekf_.Q_(1, 3) = (dt_3 / 2) * noise_ay_;
+
+    ekf_.Q_(2, 0) = (dt_3 / 2) * noise_ax_;
+    ekf_.Q_(2, 2) = dt_2 * noise_ax_;
+
+    ekf_.Q_(3, 1) = (dt_3 / 2) * noise_ay_;
+    ekf_.Q_(3, 3) = dt_2 * noise_ay_;
+}
+
+void FusionEkf::ProcessMeasurement(SensorReading &reading)
+{
+    if (!is_initialized_) {
+        // we will need to init the state vector x,y,vx,vy
+        switch (reading.sensor_type) {
+            case SensorType::LASER:
+                ekf_.x_ = VectorXd(4);
+                ekf_.x_ << reading.measurement[0], reading.measurement[1], 0, 0;
+                break;
+            case SensorType::RADAR:
+                ekf_.x_ = utility::PolarToCartesian(reading.measurement);
+                break;
+        }
+
+        // we can't let x and y be zero.
+        if (fabs(ekf_.x_(0) + ekf_.x_(1)) < 1e-4) {
+            ekf_.x_(0) = 1e-4;
+            ekf_.x_(1) = 1e-4;
+        }
+
+        previous_timestamp_ = reading.timestamp;
+        is_initialized_     = true;
+        return;
+    }
+
+    float dt            = (reading.timestamp - previous_timestamp_) / 1000000.0; // dt - expressed in seconds
+    previous_timestamp_ = reading.timestamp;
+
+    // We update the F and Q matrices using dt
+    UpdateFQ(dt);
+
+    // Make Prediction only if we the dt is big enough.
+    if (dt > 1e-3) {
+        ekf_.Predict();
+    }
+
+    switch (reading.sensor_type) {
+        case SensorType::RADAR:
+            ekf_.H_ = utility::CalculateJacobian(ekf_.x_);
+            ekf_.R_ = R_radar_;
+            ekf_.UpdateEkf(reading.measurement);
+            break;
+
+        case SensorType::LASER:
+            ekf_.H_ = H_laser_;
+            ekf_.R_ = R_laser_;
+            ekf_.Update(reading.measurement);
+            break;
+    }
+} // end FusionEkf::ProcessMeasurement
+
+// -- end of fusion_ekf.h and fusion_ekf.cc of ekf
+
+using utility::CalculateRmse;
+using utility::CheckArguments;
+using utility::CheckFiles;
+using utility::SensorReading;
+using utility::SensorType;
+
+void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs, unsigned *d1,
+               unsigned *d2, unsigned *d3, unsigned *st_offset, unsigned *ld_offset1, unsigned *ld_offset2,
+               unsigned *src_offset, unsigned *dst_offset, int *acc_buf)
+{
+    CheckArguments(argc, argv);
+
+    string   in_file_name_ = argv[1];
+    ifstream in_file_(in_file_name_.c_str(), ifstream::in);
+
+    string   out_file_name_ = argv[2];
+    ofstream out_file_(out_file_name_.c_str(), ofstream::out);
+
+    CheckFiles(in_file_, in_file_name_, out_file_, out_file_name_);
+
+    vector<SensorReading> sensor_readings;
+    vector<VectorXd>      ground_truths;
+
+    string line;
+
+    while (getline(in_file_, line)) {
+        istringstream iss(line);
+
+        string        sensor_type;
+        SensorReading sensor_reading;
+        long long     timestamp;
+
+        // reads first element from the current line
+        iss >> sensor_type;
+        if (sensor_type.compare("L") == 0) {
+            // LASER MEASUREMENT
+            float x, y;
+            iss >> x;
+            iss >> y;
+            iss >> timestamp;
+
+            sensor_reading.sensor_type = SensorType::LASER;
+            sensor_reading.measurement = VectorXd(2);
+            sensor_reading.measurement << x, y;
+            sensor_reading.timestamp = timestamp;
+        } else if (sensor_type.compare("R") == 0) {
+            // RADAR MEASUREMENT
+            float ro, phi, ro_dot;
+            iss >> ro;
+            iss >> phi;
+            iss >> ro_dot;
+            iss >> timestamp;
+
+            sensor_reading.sensor_type = SensorType::RADAR;
+            sensor_reading.measurement = VectorXd(3);
+            sensor_reading.measurement << ro, phi, ro_dot;
+            sensor_reading.timestamp = timestamp;
+        }
+
+        sensor_readings.push_back(sensor_reading);
+        // read ground truth data to compare later
+        float x_gt, y_gt, vx_gt, vy_gt;
+        iss >> x_gt;
+        iss >> y_gt;
+        iss >> vx_gt;
+        iss >> vy_gt;
+
+        VectorXd ground_truth(4);
+        ground_truth << x_gt, y_gt, vx_gt, vy_gt;
+        ground_truths.push_back(ground_truth);
+    }
+
+    FusionEkf        fusion_ekf_;
+    vector<VectorXd> estimations;
+
+    size_t N = sensor_readings.size();
+    for (size_t k = 0; k < N; ++k) {
+        SensorReading reading = sensor_readings[k];
+        fusion_ekf_.ProcessMeasurement(reading);
+
+        // output the estimation
+        VectorXd x_ = fusion_ekf_.current_estimate();
+
+        out_file_ << x_(0) << "\t";
+        out_file_ << x_(1) << "\t";
+        out_file_ << x_(2) << "\t";
+        out_file_ << x_(3) << "\t";
+
+        switch (reading.sensor_type) {
+            case SensorType::RADAR:
+                out_file_ << reading.measurement(0) * cos(reading.measurement(1)) << "\t";
+                out_file_ << reading.measurement(0) * sin(reading.measurement(1)) << "\t";
+                break;
+
+            case SensorType::LASER:
+                out_file_ << reading.measurement(0) << "\t";
+                out_file_ << reading.measurement(1) << "\t";
+                break;
+        }
+
+        // output the ground truth packages
+        VectorXd ground_truth = ground_truths[k];
+        out_file_ << ground_truth(0) << "\t";
+        out_file_ << ground_truth(1) << "\t";
+        out_file_ << ground_truth(2) << "\t";
+        out_file_ << ground_truth(3) << "\n";
+
+        estimations.push_back(x_);
+    }
+
+    // compute the accuracy (RMSE)
+    cout << "Accuracy - RMSE:" << endl << CalculateRmse(estimations, ground_truths) << endl;
+
+    // close files
+    if (out_file_.is_open()) {
+        out_file_.close();
+    }
+
+    if (in_file_.is_open()) {
+        in_file_.close();
+    }
+}
 
 // } /* extern "C" */

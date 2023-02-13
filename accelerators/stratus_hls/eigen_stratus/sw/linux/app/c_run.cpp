@@ -339,7 +339,7 @@ template <typename MatrixType> MatrixType CustomProductC(const MatrixType &A, co
 
 // extern "C" {
 
-void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs, unsigned *d1, unsigned *d2,
+void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs, unsigned *d1, unsigned *d2,
                 unsigned *d3, unsigned *st_offset, unsigned *ld_offset1, unsigned *ld_offset2, unsigned *src_offset,
                 unsigned *dst_offset, int *acc_buf)
 {
@@ -369,8 +369,9 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
     //     7, 8;
 
     // MatrixXf(row, col)
-    MatrixXf A = MatrixXf::Random(10, 50);
-    MatrixXf B = MatrixXf::Random(50, 10);
+    cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << endl;
+    MatrixXf A = MatrixXf::Random(m, n);
+    MatrixXf B = MatrixXf::Random(n, p);
 
     // cout << "A : " << A << endl;
     // cout << "B : " << B << endl;
@@ -382,7 +383,7 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
     struct timespec startn2, endn2;
 
     // -- [Test 0]: run gemm accelerator
-    cout << "[Test 0]: Using the custom implementation and overloaded operator (gemm accelerator): " << endl;
+    // cout << "[Test 0]: Using the custom implementation and overloaded operator (gemm accelerator): " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn);
     MatrixXf C0 = A * B;
@@ -391,10 +392,10 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
 
     double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
     time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
-    cout << fixed << "Time taken: " << time_taken << " sec\n" << endl;
+    cout << fixed << "[Test 0] Time taken: " << time_taken << " sec" << endl;
 
     // -- [Test 1]: run on riscv
-    cout << "[Test 1]: Using the custom implementation in regular C: " << endl;
+    // cout << "[Test 1]: Using the custom implementation in regular C: " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn1);
     MatrixXf C1 = CustomProductC(A, B);
@@ -403,10 +404,10 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
 
     double time_taken1 = (endn1.tv_sec - startn1.tv_sec) * 1e9;
     time_taken1        = (time_taken1 + (endn1.tv_nsec - startn1.tv_nsec)) * 1e-9;
-    cout << fixed << "Time taken: " << time_taken1 << " sec\n" << endl;
+    cout << fixed << "[Test 1] Time taken: " << time_taken1 << " sec" << endl;
 
     // -- [Test 2]: run on riscv with Eigen implementation
-    cout << "[Test 2]: Using the Eigen implementation and original operator: " << endl;
+    // cout << "[Test 2]: Using the Eigen implementation and original operator: " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn2);
     MatrixXf C2 = A.operator*(B);
@@ -415,18 +416,18 @@ void c_run_gemm(void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninpu
 
     double time_taken2 = (endn2.tv_sec - startn2.tv_sec) * 1e9;
     time_taken2        = (time_taken2 + (endn2.tv_nsec - startn2.tv_nsec)) * 1e-9;
-    cout << fixed << "Time taken: " << time_taken2 << " sec" << endl;
+    cout << fixed << "[Test 2] Time taken: " << time_taken2 << " sec" << endl;
 
     // Eigen::MatrixXf C2 = Eigen::MatrixBase<Eigen::MatrixXf>::operator*(A,B);
 
     MatrixXf C01 = C0 - C1;
 
-    cout << endl;
-    cout << "Maximum difference between accelerator and C: " << C01.maxCoeff() << endl;
-    cout << "Minimum difference between accelerator and C: " << C01.minCoeff() << endl;
+    // cout << endl;
+    // cout << "Maximum difference between accelerator and C: " << C01.maxCoeff() << endl;
+    // cout << "Minimum difference between accelerator and C: " << C01.minCoeff() << endl;
 
-    cout << "== c_run_gemm done ==" << endl;
-    cout << endl;
+    // cout << "== c_run_gemm done ==" << endl;
+    // cout << endl;
 }
 
 // -- from ekf.h and ekf.cc of ekf
@@ -479,8 +480,8 @@ void ExtendedKalmanFilter::Predict()
 {
     x_ = F_ * x_;
     // [kuanlin]: matrix multiplication here:
-    // P_ = F_ * P_ * F_.transpose() + Q_;
-    P_ = (F_.operator*(P_)).operator*(F_.transpose()) + Q_;
+    P_ = F_ * P_ * F_.transpose() + Q_;
+    // P_ = (F_.operator*(P_)).operator*(F_.transpose()) + Q_;
 }
 
 void ExtendedKalmanFilter::Update(const VectorXd &z)
@@ -501,10 +502,10 @@ void ExtendedKalmanFilter::CallRestOfUpdate(const VectorXd &y)
     MatrixXd Ht = H_.transpose();
 
     // [kuanlin]: matrix multiplication here:
-    // MatrixXd PHt = P_ * Ht;
-    // MatrixXd S   = H_ * PHt + R_;
-    MatrixXd PHt = P_.operator*(Ht);
-    MatrixXd S   = H_.operator*(PHt) + R_;
+    MatrixXd PHt = P_ * Ht;
+    MatrixXd S   = H_ * PHt + R_;
+    // MatrixXd PHt = P_.operator*(Ht);
+    // MatrixXd S   = H_.operator*(PHt) + R_;
 
     MatrixXd K = PHt * S.inverse();
 
@@ -512,8 +513,8 @@ void ExtendedKalmanFilter::CallRestOfUpdate(const VectorXd &y)
     x_ = x_ + (K * y);
 
     // [kuanlin]: matrix multiplication here:
-    // P_ = (I_ - K * H_) * P_;
-    P_ = (I_ - K.operator*(H_)).operator*(P_);
+    P_ = (I_ - K * H_) * P_;
+    // P_ = (I_ - K.operator*(H_)).operator*(P_);
 }
 // -- end of ekf.h and ekf.cc of ekf
 
@@ -673,6 +674,9 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
                unsigned *d2, unsigned *d3, unsigned *st_offset, unsigned *ld_offset1, unsigned *ld_offset2,
                unsigned *src_offset, unsigned *dst_offset, int *acc_buf)
 {
+    struct timespec start_ekf, end_ekf;
+
+
     CheckArguments(argc, argv);
 
     string   in_file_name_ = argv[1];
@@ -738,6 +742,10 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
     FusionEkf        fusion_ekf_;
     vector<VectorXd> estimations;
 
+
+    clock_gettime(CLOCK_MONOTONIC, &start_ekf);
+
+
     size_t N = sensor_readings.size();
     for (size_t k = 0; k < N; ++k) {
         SensorReading reading = sensor_readings[k];
@@ -775,6 +783,12 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
 
     // compute the accuracy (RMSE)
     cout << "Accuracy - RMSE:" << endl << CalculateRmse(estimations, ground_truths) << endl;
+
+    clock_gettime(CLOCK_MONOTONIC, &end_ekf);
+ double time_taken = (end_ekf.tv_sec - start_ekf.tv_sec) * 1e9;
+    time_taken        = (time_taken + (end_ekf.tv_nsec - start_ekf.tv_nsec)) * 1e-9;
+    cout << fixed << "Time taken: " << time_taken << " sec\n" << endl;
+
 
     // close files
     if (out_file_.is_open()) {

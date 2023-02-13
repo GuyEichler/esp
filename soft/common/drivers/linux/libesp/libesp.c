@@ -186,20 +186,20 @@ static void esp_config(esp_thread_info_t* cfg[], unsigned nthreads, unsigned *na
 	}
 }
 
-static void print_time_info(esp_thread_info_t *info[], unsigned long long hw_ns, int nthreads, unsigned* nacc)
-{
-	int i, j;
+// static void print_time_info(esp_thread_info_t *info[], unsigned long long hw_ns, int nthreads, unsigned* nacc)
+// {
+// 	int i, j;
 
-	printf("  > Test time: %llu ns\n", hw_ns);
-	for (i = 0; i < nthreads; i++) {
-		unsigned len = nacc[i];
-		for (j = 0; j < len; j++) {
-			esp_thread_info_t* cur = info[i] + j;
-			if (cur->run)
-				printf("	- %s time: %llu ns\n", cur->devname, cur->hw_ns);
-		}
-	}
-}
+// 	printf("  > Test time: %llu ns\n", hw_ns);
+// 	for (i = 0; i < nthreads; i++) {
+// 		unsigned len = nacc[i];
+// 		for (j = 0; j < len; j++) {
+// 			esp_thread_info_t* cur = info[i] + j;
+// 			if (cur->run)
+// 				printf("	- %s time: %llu ns\n", cur->devname, cur->hw_ns);
+// 		}
+// 	}
+// }
 
 void esp_run(esp_thread_info_t cfg[], unsigned nacc)
 {
@@ -289,7 +289,7 @@ void esp_run_parallel(esp_thread_info_t* cfg[], unsigned nthreads, unsigned* nac
 	}
 
 	gettime(&th_end);
-	print_time_info(cfg, ts_subtract(&th_start, &th_end), nthreads, nacc);
+	// print_time_info(cfg, ts_subtract(&th_start, &th_end), nthreads, nacc);
 
 	free(thread);
 }
@@ -300,10 +300,38 @@ void esp_free(void *buf)
 }
 
 
-
-void esp_dummy(void* x)
+unsigned long long esp_run_no_print(esp_thread_info_t cfg[], unsigned nacc)
 {
-	/* printf("--- this is esp_dummy()\n"); */
+    // [kuanlin]: this api should be the same as esp_run except no print and return the acc time instead
+
+    // int                i;
+    unsigned long long acc_time;
+acc_time = 0;
+    // if (thread_is_p2p(&cfg[0])) {
+    //     esp_thread_info_t *cfg_ptrs[1];
+    //     cfg_ptrs[0] = cfg;
+
+    //     acc_time = esp_run_parallel(cfg_ptrs, 1, &nacc, true);
+    // } else {
+    //     esp_thread_info_t **cfg_ptrs = malloc(sizeof(esp_thread_info_t *) * nacc);
+    //     unsigned *          nacc_arr = malloc(sizeof(unsigned) * nacc);
+
+    //     for (i = 0; i < nacc; i++) {
+    //         nacc_arr[i] = 1;
+    //         cfg_ptrs[i] = &cfg[i];
+    //     }
+    //     acc_time = esp_run_parallel(cfg_ptrs, nacc, nacc_arr, true);
+    //     free(nacc_arr);
+    //     free(cfg_ptrs);
+    // }
+
+    return acc_time;
+}
+
+
+void esp_dummy_gemm(void* x)
+{
+	/* printf("--- this is esp_dummy_gemm()\n"); */
 	// esp_thread_info_t* cfg = NULL;
 	unsigned nacc = 1;
 

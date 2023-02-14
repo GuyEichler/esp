@@ -23,7 +23,7 @@
 #define LD_OFFSET1 0
 #define LD_OFFSET2 (NINPUTS * (D1 * D2))
 
-extern "C" void esp_dummy_gemm(void *x);
+extern "C" void esp_dummy_gemm(void *x, bool print);
 
 using namespace Eigen;
 using namespace std;
@@ -219,9 +219,69 @@ static inline int float_to_fixed32(float value, int n_int_bits)
     return (int)(value * (*shift));
 }
 
+template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixXd &A, const VectorXd &B)
+{
+    // cout << "custom to call gemm (matrix-vector)" << endl;
+
+    // esp_run(cfg_000, 1);
+
+    int rowsA = A.rows();
+    int colsA = A.cols();
+    int rowsB = B.rows();
+    int colsB = B.cols();
+
+    // Check if the matrices can be multiplied
+    if (colsA != rowsB) {
+        std::cerr << "Error: The number of columns in A must match the number of rows in B." << std::endl;
+        return VectorXd();
+    }
+
+    *do_relu_i   = 0;
+    *transpose_i = 0;
+    *ninputs_i   = 1;
+
+    *d1_i = rowsA;
+    *d2_i = colsA;
+    *d3_i = colsB;
+
+    *ld_offset1_i = 0;
+    *ld_offset2_i = 1 * rowsA * colsA;
+    *st_offset_i  = rowsA * colsA + rowsB * colsB;
+
+    *src_offset_i = 0;
+    *dst_offset_i = 0;
+
+    // Allocate memory for the arrays
+    int *A_data_int = &(acc_buf_i[0]);               // new int[rowsA * colsA];
+    int *B_data_int = &(acc_buf_i[(*ld_offset2_i)]); // new int[rowsB * colsB];
+    int *C_data_int = &(acc_buf_i[(*st_offset_i)]);  // new int[rowsA * colsB];
+
+    // Copy the data from the matrices into the arrays
+    for (int i = 0; i < rowsA; ++i)
+        for (int j = 0; j < colsA; ++j) {
+            A_data_int[i * colsA + j] = float_to_fixed32(A(i, j), FX_IL);
+        }
+    for (int i = 0; i < rowsB; ++i)
+        for (int j = 0; j < colsB; ++j) {
+            B_data_int[i * colsB + j] = float_to_fixed32(B(i, j), FX_IL);
+        }
+
+    // acc_buf_i = acc_buf;
+
+    // Run gemm accelerator
+    esp_dummy_gemm(cfg, true);
+
+    // Copy the result from the array into a matrix
+    VectorXd C_acc(rowsA);
+    for (int i = 0; i < rowsA; ++i)
+        C_acc(i) = fixed32_to_float(C_data_int[i], FX_IL);
+
+    return C_acc;
+}
+
 template <typename MatrixType> MatrixType operator*(const MatrixType &A, const MatrixType &B)
 {
-    // cout << "CUSTOM" << endl;
+    // cout << "custom to call gemm (matrix-matrix)" << endl;
 
     // esp_run(cfg_000, 1);
 
@@ -269,7 +329,7 @@ template <typename MatrixType> MatrixType operator*(const MatrixType &A, const M
     // acc_buf_i = acc_buf;
 
     // Run gemm accelerator
-    esp_dummy_gemm(cfg);
+    esp_dummy_gemm(cfg, false);
 
     // Copy the result from the array into a matrix
     MatrixType C_acc(rowsA, colsB);
@@ -339,9 +399,9 @@ template <typename MatrixType> MatrixType CustomProductC(const MatrixType &A, co
 
 // extern "C" {
 
-void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs, unsigned *d1, unsigned *d2,
-                unsigned *d3, unsigned *st_offset, unsigned *ld_offset1, unsigned *ld_offset2, unsigned *src_offset,
-                unsigned *dst_offset, int *acc_buf)
+void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs, unsigned *d1,
+                unsigned *d2, unsigned *d3, unsigned *st_offset, unsigned *ld_offset1, unsigned *ld_offset2,
+                unsigned *src_offset, unsigned *dst_offset, int *acc_buf)
 {
 
     // set global pointers to gemm accelerator configuration
@@ -428,6 +488,35 @@ void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *trans
 
     // cout << "== c_run_gemm done ==" << endl;
     // cout << endl;
+
+    MatrixXd Lhs2(3, 3);
+    Lhs2 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+    VectorXd rhs2(3, 1);
+    rhs2 << 1, 2, 3;
+
+    VectorXd ret20(3, 1);
+    VectorXd ret21(3, 1);
+    VectorXd ret22(3, 1);
+
+    clock_gettime(CLOCK_MONOTONIC, &startn);
+    ret20 = Lhs2 * rhs2;
+    clock_gettime(CLOCK_MONOTONIC, &endn);
+    time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
+    time_taken = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
+    cout << fixed << "[Test 0] Time taken: " << time_taken << " sec" << endl;
+
+    cout << "ret20 = " << ret20 << endl;
+
+    // ret21 = CustomProductC(Lhs2, rhs2);
+    // cout << "ret21 = " << ret21 << endl;
+    clock_gettime(CLOCK_MONOTONIC, &startn2);
+    ret22 = Lhs2.operator*(rhs2);
+    clock_gettime(CLOCK_MONOTONIC, &endn2);
+    time_taken2 = (endn2.tv_sec - startn2.tv_sec) * 1e9;
+    time_taken2 = (time_taken2 + (endn2.tv_nsec - startn2.tv_nsec)) * 1e-9;
+    cout << fixed << "[Test 2] Time taken: " << time_taken2 << " sec" << endl;
+
+    cout << "ret22 = " << ret22 << endl;
 }
 
 // -- from ekf.h and ekf.cc of ekf
@@ -480,7 +569,9 @@ void ExtendedKalmanFilter::Predict()
 {
     x_ = F_ * x_;
     // [kuanlin]: matrix multiplication here:
-    P_ = F_ * P_ * F_.transpose() + Q_;
+    // [org]: P_ = F_ * P_ * F_.transpose() + Q_;
+    MatrixXd F_transpose = F_.transpose();
+    P_                   = (F_ * P_) * F_transpose + Q_;
     // P_ = (F_.operator*(P_)).operator*(F_.transpose()) + Q_;
 }
 
@@ -506,14 +597,17 @@ void ExtendedKalmanFilter::CallRestOfUpdate(const VectorXd &y)
     MatrixXd S   = H_ * PHt + R_;
     // MatrixXd PHt = P_.operator*(Ht);
     // MatrixXd S   = H_.operator*(PHt) + R_;
-
-    MatrixXd K = PHt * S.inverse();
+    S          = S.inverse();
+    MatrixXd K = PHt * S;
 
     // New state
     x_ = x_ + (K * y);
 
     // [kuanlin]: matrix multiplication here:
-    P_ = (I_ - K * H_) * P_;
+    MatrixXd temp1 = K * H_;
+    temp1          = I_ - temp1;
+    P_             = temp1 * P_;
+    // P_ = (I_ - K * H_) * P_;
     // P_ = (I_ - K.operator*(H_)).operator*(P_);
 }
 // -- end of ekf.h and ekf.cc of ekf
@@ -676,7 +770,6 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
 {
     struct timespec start_ekf, end_ekf;
 
-
     CheckArguments(argc, argv);
 
     string   in_file_name_ = argv[1];
@@ -742,9 +835,7 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
     FusionEkf        fusion_ekf_;
     vector<VectorXd> estimations;
 
-
     clock_gettime(CLOCK_MONOTONIC, &start_ekf);
-
 
     size_t N = sensor_readings.size();
     for (size_t k = 0; k < N; ++k) {
@@ -785,10 +876,9 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
     cout << "Accuracy - RMSE:" << endl << CalculateRmse(estimations, ground_truths) << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &end_ekf);
- double time_taken = (end_ekf.tv_sec - start_ekf.tv_sec) * 1e9;
+    double time_taken = (end_ekf.tv_sec - start_ekf.tv_sec) * 1e9;
     time_taken        = (time_taken + (end_ekf.tv_nsec - start_ekf.tv_nsec)) * 1e-9;
     cout << fixed << "Time taken: " << time_taken << " sec\n" << endl;
-
 
     // close files
     if (out_file_.is_open()) {

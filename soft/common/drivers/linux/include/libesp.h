@@ -57,11 +57,12 @@ struct thread_args {
 
 void *esp_alloc_policy(struct contig_alloc_params params, size_t size);
 void *esp_alloc(size_t size);
-void esp_run_parallel(esp_thread_info_t* cfg[], unsigned nthreads, unsigned* nacc);
+unsigned long long esp_run_parallel(esp_thread_info_t* cfg[], unsigned nthreads, unsigned* nacc, bool no_print);
 void esp_run(esp_thread_info_t cfg[], unsigned nacc);
+unsigned long long esp_run_no_print(esp_thread_info_t cfg[], unsigned nacc);
 void esp_free(void *buf);
 
 unsigned long long esp_run_no_print(esp_thread_info_t cfg[], unsigned nacc);
-void esp_dummy_gemm(void * x);
+void esp_dummy_gemm(void * x, bool print);
 
 #endif /* __ESPLIB_H__ */

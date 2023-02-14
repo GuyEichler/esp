@@ -32,54 +32,51 @@ int main(int argc, char **argv)
     unsigned *dst_offset = &(gemm_cfg_000[0].dst_offset);
 
     int i, j, k;
-
+    int test_num;
 
     i = j = k = 5;
     c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
-                   src_offset, dst_offset, acc_buf);
+               src_offset, dst_offset, acc_buf);
 
+    // test_num = 0;
+    // c_run_ekf(test_num, argc, argv, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
+    //           ld_offset2, src_offset, dst_offset, acc_buf);
+
+    // test_num = 1;
+    // c_run_ekf(test_num, argc, argv, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
+    //           ld_offset2, src_offset, dst_offset, acc_buf);
+
+    // test_num = 2;
+    // c_run_ekf(test_num, argc, argv, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
+    //           ld_offset2, src_offset, dst_offset, acc_buf);
 
     // sweep of size of the array with random numbers
-    /*
+
     for (i = 2; i < 10; i++) {
         j = i;
-        k = i;
+        k = 1;
         c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
                    src_offset, dst_offset, acc_buf);
     }
 
-    for (i = 10; i < 100; i+=10) {
+    for (i = 10; i < 100; i += 10) {
         j = i;
-        k = i;
+        k = 1;
         c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
                    src_offset, dst_offset, acc_buf);
     }
 
-    for (i = 100; i < 1000; i+=100) {
-        j = i;
-        k = i;
-        c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
-                   src_offset, dst_offset, acc_buf);
-    }
+    // for (i = 100; i < 1000; i+=100) {
+    //     j = i;
+    //     k = i;
+    //     c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
+    //     ld_offset2,
+    //                src_offset, dst_offset, acc_buf);
+    // }
 
-    for (i = 1000; i < 10000; i+=1000) {
-        j = i;
-        k = i;
-        c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
-                   src_offset, dst_offset, acc_buf);
-    }
-
-    for (i = 10000; i < 100000; i+=10000) {
-        j = i;
-        k = i;
-        c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
-                   src_offset, dst_offset, acc_buf);
-    }
-    */
-
-    c_run_ekf(argc, argv, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
-    ld_offset2, src_offset,
-               dst_offset, acc_buf);
+    // i = j = k = 1000;
+    // c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
+    //                src_offset, dst_offset, acc_buf);
 
     // free
     esp_free(acc_buf);

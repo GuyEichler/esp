@@ -28,6 +28,10 @@ extern "C" void esp_dummy_gemm(void *x, bool print);
 using namespace Eigen;
 using namespace std;
 
+double total_time_mm;
+double total_time_mv;
+int    test_num;
+
 // -- from utility.h and utility.cc of ekf
 namespace utility
 {
@@ -222,13 +226,16 @@ static inline int float_to_fixed32(float value, int n_int_bits)
 template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixXd &A, const VectorXd &B)
 {
     // cout << "custom to call gemm (matrix-vector)" << endl;
+    struct timespec startn, endn;
 
+    clock_gettime(CLOCK_MONOTONIC, &startn);
     // esp_run(cfg_000, 1);
 
     int rowsA = A.rows();
     int colsA = A.cols();
     int rowsB = B.rows();
-    int colsB = B.cols();
+    int colsB = 1; // B.cols();
+    int i, j;
 
     // Check if the matrices can be multiplied
     if (colsA != rowsB) {
@@ -257,24 +264,29 @@ template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixX
     int *C_data_int = &(acc_buf_i[(*st_offset_i)]);  // new int[rowsA * colsB];
 
     // Copy the data from the matrices into the arrays
-    for (int i = 0; i < rowsA; ++i)
-        for (int j = 0; j < colsA; ++j) {
+    for (i = 0; i < rowsA; ++i)
+        for (j = 0; j < colsA; ++j) {
             A_data_int[i * colsA + j] = float_to_fixed32(A(i, j), FX_IL);
         }
-    for (int i = 0; i < rowsB; ++i)
-        for (int j = 0; j < colsB; ++j) {
+    for (i = 0; i < rowsB; ++i)
+        for (j = 0; j < colsB; ++j) {
             B_data_int[i * colsB + j] = float_to_fixed32(B(i, j), FX_IL);
         }
 
     // acc_buf_i = acc_buf;
 
     // Run gemm accelerator
-    esp_dummy_gemm(cfg, true);
+    esp_dummy_gemm(cfg, false);
 
     // Copy the result from the array into a matrix
     VectorXd C_acc(rowsA);
-    for (int i = 0; i < rowsA; ++i)
+    for (i = 0; i < rowsA; ++i)
         C_acc(i) = fixed32_to_float(C_data_int[i], FX_IL);
+
+    clock_gettime(CLOCK_MONOTONIC, &endn);
+    double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
+    time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
+    total_time_mv += time_taken;
 
     return C_acc;
 }
@@ -282,7 +294,9 @@ template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixX
 template <typename MatrixType> MatrixType operator*(const MatrixType &A, const MatrixType &B)
 {
     // cout << "custom to call gemm (matrix-matrix)" << endl;
+    struct timespec startn, endn;
 
+    clock_gettime(CLOCK_MONOTONIC, &startn);
     // esp_run(cfg_000, 1);
 
     int rowsA = A.rows();
@@ -338,7 +352,68 @@ template <typename MatrixType> MatrixType operator*(const MatrixType &A, const M
             C_acc(i, j) = fixed32_to_float(C_data_int[i * colsB + j], FX_IL);
         }
 
+    clock_gettime(CLOCK_MONOTONIC, &endn);
+    double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
+    time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
+    total_time_mm += time_taken;
+
     return C_acc;
+}
+
+template <typename MatrixType, typename VectorXf> VectorXf CustomProductC(const MatrixType &A, const VectorXf &B)
+{
+    // cout << "CUSTOM" << endl;
+
+    // esp_run(cfg_000, 1);
+
+    int rowsA = A.rows();
+    int colsA = A.cols();
+    int rowsB = B.rows();
+    int colsB = 1; // B.cols();
+
+    // Check if the matrices can be multiplied
+    if (colsA != rowsB) {
+        std::cerr << "Error: The number of columns in A must match the number of rows in B." << std::endl;
+        return MatrixType();
+    }
+
+    // Allocate memory for the arrays
+    double *A_data = new double[rowsA * colsA];
+    double *B_data = new double[rowsB * colsB];
+    double *C_data = new double[rowsA * colsB];
+
+    // Copy the data from the matrices into the arrays
+    for (int i = 0; i < rowsA; ++i)
+        for (int j = 0; j < colsA; ++j) {
+            A_data[i * colsA + j] = A(i, j);
+        }
+    for (int i = 0; i < rowsB; ++i)
+        for (int j = 0; j < colsB; ++j) {
+            B_data[i * colsB + j] = B(i, j);
+        }
+
+    // Perform the matrix multiplication using a custom algorithm
+    for (int i = 0; i < rowsA; ++i)
+        for (int j = 0; j < colsB; ++j) {
+            double sum = 0.0;
+            for (int k = 0; k < colsA; ++k)
+                sum += A_data[i * colsA + k] * B_data[k * colsB + j];
+            C_data[i * colsB + j] = sum;
+        }
+
+    // Copy the result from the array into a matrix
+    MatrixType C(rowsA, colsB);
+    for (int i = 0; i < rowsA; ++i)
+        for (int j = 0; j < colsB; ++j) {
+            C(i, j) = C_data[i * colsB + j];
+        }
+
+    // Deallocate memory for the arrays
+    delete[] A_data;
+    delete[] B_data;
+    delete[] C_data;
+
+    return C;
 }
 
 template <typename MatrixType> MatrixType CustomProductC(const MatrixType &A, const MatrixType &B)
@@ -429,14 +504,15 @@ void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *trans
     //     7, 8;
 
     // MatrixXf(row, col)
-    cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << endl;
+    // cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << endl;
     MatrixXf A = MatrixXf::Random(m, n);
     MatrixXf B = MatrixXf::Random(n, p);
+    VectorXf BV = VectorXf::Random(n, 1);
 
     // cout << "A : " << A << endl;
     // cout << "B : " << B << endl;
 
-    cout << setprecision(15) << endl;
+    cout << setprecision(15); // << endl;
 
     struct timespec startn, endn;
     struct timespec startn1, endn1;
@@ -446,77 +522,87 @@ void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *trans
     // cout << "[Test 0]: Using the custom implementation and overloaded operator (gemm accelerator): " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn);
-    MatrixXf C0 = A * B;
+    // MatrixXf C0 = A * B;
+    VectorXf CV0 = A * BV;
     clock_gettime(CLOCK_MONOTONIC, &endn);
     // cout << "The product of A and B is:\n" << C0 << endl;
 
     double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
     time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
-    cout << fixed << "[Test 0] Time taken: " << time_taken << " sec" << endl;
+    // cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << fixed << "[Test 0] Time taken: " << time_taken
+    //      << " sec" << endl;
 
     // -- [Test 1]: run on riscv
     // cout << "[Test 1]: Using the custom implementation in regular C: " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn1);
-    MatrixXf C1 = CustomProductC(A, B);
+    // MatrixXf C1 = CustomProductC(A, B);
+    VectorXf CV1 = CustomProductC(A, BV);
     clock_gettime(CLOCK_MONOTONIC, &endn1);
     // cout << "The product of A and B is:\n" << C1 << endl;
 
     double time_taken1 = (endn1.tv_sec - startn1.tv_sec) * 1e9;
     time_taken1        = (time_taken1 + (endn1.tv_nsec - startn1.tv_nsec)) * 1e-9;
-    cout << fixed << "[Test 1] Time taken: " << time_taken1 << " sec" << endl;
+    // cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << fixed << "[Test 1] Time taken: " << time_taken1
+    //      << " sec" << endl;
 
     // -- [Test 2]: run on riscv with Eigen implementation
     // cout << "[Test 2]: Using the Eigen implementation and original operator: " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn2);
-    MatrixXf C2 = A.operator*(B);
+    // MatrixXf C2 = A.operator*(B);
+    VectorXf CV2 = A.operator*(BV);
     clock_gettime(CLOCK_MONOTONIC, &endn2);
     // cout << "The product of A and B is:\n" << C2 << endl;
 
     double time_taken2 = (endn2.tv_sec - startn2.tv_sec) * 1e9;
     time_taken2        = (time_taken2 + (endn2.tv_nsec - startn2.tv_nsec)) * 1e-9;
-    cout << fixed << "[Test 2] Time taken: " << time_taken2 << " sec" << endl;
+    // cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << fixed << "[Test 2] Time taken: " << time_taken2
+    //      << " sec" << endl;
+
+    cout << "(m, n, p) = (" << m << ", " << n << ", " << p << ")" << fixed << " " << time_taken << " " << time_taken1
+         << " " << time_taken2 << " sec" << endl;
 
     // Eigen::MatrixXf C2 = Eigen::MatrixBase<Eigen::MatrixXf>::operator*(A,B);
 
-    MatrixXf C01 = C0 - C1;
-
-    // cout << endl;
+    // MatrixXf C01 = C0 - C1;
     // cout << "Maximum difference between accelerator and C: " << C01.maxCoeff() << endl;
     // cout << "Minimum difference between accelerator and C: " << C01.minCoeff() << endl;
 
     // cout << "== c_run_gemm done ==" << endl;
     // cout << endl;
 
-    MatrixXd Lhs2(3, 3);
-    Lhs2 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
-    VectorXd rhs2(3, 1);
-    rhs2 << 1, 2, 3;
+    /*
+    // -- test for matrix-vector operator
+        MatrixXd Lhs2(3, 3);
+        Lhs2 << 1, 2, 3, 4, 5, 6, 7, 8, 9;
+        VectorXd rhs2(3, 1);
+        rhs2 << 1, 2, 3;
 
-    VectorXd ret20(3, 1);
-    VectorXd ret21(3, 1);
-    VectorXd ret22(3, 1);
+        VectorXd ret20(3, 1);
+        VectorXd ret21(3, 1);
+        VectorXd ret22(3, 1);
 
-    clock_gettime(CLOCK_MONOTONIC, &startn);
-    ret20 = Lhs2 * rhs2;
-    clock_gettime(CLOCK_MONOTONIC, &endn);
-    time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
-    time_taken = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
-    cout << fixed << "[Test 0] Time taken: " << time_taken << " sec" << endl;
+        clock_gettime(CLOCK_MONOTONIC, &startn);
+        ret20 = Lhs2 * rhs2;
+        clock_gettime(CLOCK_MONOTONIC, &endn);
+        time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
+        time_taken = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
+        cout << fixed << "[Test 0] Time taken: " << time_taken << " sec" << endl;
 
-    cout << "ret20 = " << ret20 << endl;
+        cout << "ret20 = " << ret20 << endl;
 
-    // ret21 = CustomProductC(Lhs2, rhs2);
-    // cout << "ret21 = " << ret21 << endl;
-    clock_gettime(CLOCK_MONOTONIC, &startn2);
-    ret22 = Lhs2.operator*(rhs2);
-    clock_gettime(CLOCK_MONOTONIC, &endn2);
-    time_taken2 = (endn2.tv_sec - startn2.tv_sec) * 1e9;
-    time_taken2 = (time_taken2 + (endn2.tv_nsec - startn2.tv_nsec)) * 1e-9;
-    cout << fixed << "[Test 2] Time taken: " << time_taken2 << " sec" << endl;
+        // ret21 = CustomProductC(Lhs2, rhs2);
+        // cout << "ret21 = " << ret21 << endl;
+        clock_gettime(CLOCK_MONOTONIC, &startn2);
+        ret22 = Lhs2.operator*(rhs2);
+        clock_gettime(CLOCK_MONOTONIC, &endn2);
+        time_taken2 = (endn2.tv_sec - startn2.tv_sec) * 1e9;
+        time_taken2 = (time_taken2 + (endn2.tv_nsec - startn2.tv_nsec)) * 1e-9;
+        cout << fixed << "[Test 2] Time taken: " << time_taken2 << " sec" << endl;
 
-    cout << "ret22 = " << ret22 << endl;
+        cout << "ret22 = " << ret22 << endl;
+    */
 }
 
 // -- from ekf.h and ekf.cc of ekf
@@ -569,10 +655,20 @@ void ExtendedKalmanFilter::Predict()
 {
     x_ = F_ * x_;
     // [kuanlin]: matrix multiplication here:
-    // [org]: P_ = F_ * P_ * F_.transpose() + Q_;
-    MatrixXd F_transpose = F_.transpose();
-    P_                   = (F_ * P_) * F_transpose + Q_;
-    // P_ = (F_.operator*(P_)).operator*(F_.transpose()) + Q_;
+    // [org]:
+    // P_ = F_ * P_ * F_.transpose() + Q_;
+
+    if (test_num == 0) { // [Test0]:
+        MatrixXd F_transpose = F_.transpose();
+        P_                   = (F_ * P_) * F_transpose + Q_;
+    }
+    if (test_num == 1) { // [Test1]:
+        MatrixXd F_transpose = F_.transpose();
+        P_                   = CustomProductC(CustomProductC(F_, P_), F_transpose) + Q_;
+    }
+    if (test_num == 2) { // [Test2]:
+        P_ = (F_.operator*(P_)).operator*(F_.transpose()) + Q_;
+    }
 }
 
 void ExtendedKalmanFilter::Update(const VectorXd &z)
@@ -593,22 +689,47 @@ void ExtendedKalmanFilter::CallRestOfUpdate(const VectorXd &y)
     MatrixXd Ht = H_.transpose();
 
     // [kuanlin]: matrix multiplication here:
-    MatrixXd PHt = P_ * Ht;
-    MatrixXd S   = H_ * PHt + R_;
-    // MatrixXd PHt = P_.operator*(Ht);
-    // MatrixXd S   = H_.operator*(PHt) + R_;
-    S          = S.inverse();
-    MatrixXd K = PHt * S;
-
+    // [org]:
+    // MatrixXd PHt = P_ * Ht;
+    // MatrixXd S   = H_ * PHt + R_;
+    //   MatrixXd K =  PHt * S.inverse();
+    MatrixXd K;
+    if (test_num == 0) { // [Test0]:
+        MatrixXd PHt = P_ * Ht;
+        MatrixXd S   = H_ * PHt + R_;
+        S            = S.inverse();
+        K            = PHt * S;
+    }
+    if (test_num == 1) { // [Test1]:
+        MatrixXd PHt = CustomProductC(P_, Ht);
+        MatrixXd S   = CustomProductC(H_, PHt) + R_;
+        S            = S.inverse();
+        K            = CustomProductC(PHt, S);
+    }
+    if (test_num == 2) { // [Test2]:
+        MatrixXd PHt = P_.operator*(Ht);
+        MatrixXd S   = H_.operator*(PHt) + R_;
+        K            = PHt.        operator*(S.inverse());
+    }
     // New state
     x_ = x_ + (K * y);
 
     // [kuanlin]: matrix multiplication here:
-    MatrixXd temp1 = K * H_;
-    temp1          = I_ - temp1;
-    P_             = temp1 * P_;
+    // [org]:
     // P_ = (I_ - K * H_) * P_;
-    // P_ = (I_ - K.operator*(H_)).operator*(P_);
+    if (test_num == 0) { // [Test0]:
+        MatrixXd temp1 = K * H_;
+        temp1          = I_ - temp1;
+        P_             = temp1 * P_;
+    }
+    if (test_num == 1) { // [Test1]:
+        MatrixXd temp = CustomProductC(K, H_);
+        temp          = I_ - temp;
+        P_            = CustomProductC(temp, P_);
+    }
+    if (test_num == 2) { // [Test2]:
+        P_ = (I_ - K.operator*(H_)).operator*(P_);
+    }
 }
 // -- end of ekf.h and ekf.cc of ekf
 
@@ -764,11 +885,15 @@ using utility::CheckFiles;
 using utility::SensorReading;
 using utility::SensorType;
 
-void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs, unsigned *d1,
-               unsigned *d2, unsigned *d3, unsigned *st_offset, unsigned *ld_offset1, unsigned *ld_offset2,
-               unsigned *src_offset, unsigned *dst_offset, int *acc_buf)
+void c_run_ekf(int test_n, int argc, char **argv, void *x, unsigned *do_relu, unsigned *transpose, unsigned *ninputs,
+               unsigned *d1, unsigned *d2, unsigned *d3, unsigned *st_offset, unsigned *ld_offset1,
+               unsigned *ld_offset2, unsigned *src_offset, unsigned *dst_offset, int *acc_buf)
 {
     struct timespec start_ekf, end_ekf;
+
+    total_time_mm = 0;
+    total_time_mv = 0;
+    test_num      = test_n;
 
     CheckArguments(argc, argv);
 
@@ -878,7 +1003,10 @@ void c_run_ekf(int argc, char **argv, void *x, unsigned *do_relu, unsigned *tran
     clock_gettime(CLOCK_MONOTONIC, &end_ekf);
     double time_taken = (end_ekf.tv_sec - start_ekf.tv_sec) * 1e9;
     time_taken        = (time_taken + (end_ekf.tv_nsec - start_ekf.tv_nsec)) * 1e-9;
-    cout << fixed << "Time taken: " << time_taken << " sec\n" << endl;
+    cout << fixed << "[Test" << test_num << "]: " << time_taken << " sec\n" << endl;
+
+    cout << fixed << "Time mm: " << total_time_mm << " sec\n" << endl;
+    cout << fixed << "Time mv: " << total_time_mv << " sec\n" << endl;
 
     // close files
     if (out_file_.is_open()) {

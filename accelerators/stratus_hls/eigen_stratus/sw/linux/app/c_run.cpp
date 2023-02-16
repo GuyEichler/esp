@@ -226,9 +226,9 @@ static inline int float_to_fixed32(float value, int n_int_bits)
 template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixXd &A, const VectorXd &B)
 {
     // cout << "custom to call gemm (matrix-vector)" << endl;
-    struct timespec startn, endn;
+    // struct timespec startn, endn;
 
-    clock_gettime(CLOCK_MONOTONIC, &startn);
+    // clock_gettime(CLOCK_MONOTONIC, &startn);
     // esp_run(cfg_000, 1);
 
     int rowsA = A.rows();
@@ -283,10 +283,10 @@ template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixX
     for (i = 0; i < rowsA; ++i)
         C_acc(i) = fixed32_to_float(C_data_int[i], FX_IL);
 
-    clock_gettime(CLOCK_MONOTONIC, &endn);
-    double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
-    time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
-    total_time_mv += time_taken;
+    // clock_gettime(CLOCK_MONOTONIC, &endn);
+    // double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
+    // time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
+    // total_time_mv += time_taken;
 
     return C_acc;
 }
@@ -294,9 +294,9 @@ template <typename MatrixXd, typename VectorXd> VectorXd operator*(const MatrixX
 template <typename MatrixType> MatrixType operator*(const MatrixType &A, const MatrixType &B)
 {
     // cout << "custom to call gemm (matrix-matrix)" << endl;
-    struct timespec startn, endn;
+    // struct timespec startn, endn;
 
-    clock_gettime(CLOCK_MONOTONIC, &startn);
+    // clock_gettime(CLOCK_MONOTONIC, &startn);
     // esp_run(cfg_000, 1);
 
     int rowsA = A.rows();
@@ -352,10 +352,10 @@ template <typename MatrixType> MatrixType operator*(const MatrixType &A, const M
             C_acc(i, j) = fixed32_to_float(C_data_int[i * colsB + j], FX_IL);
         }
 
-    clock_gettime(CLOCK_MONOTONIC, &endn);
-    double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
-    time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
-    total_time_mm += time_taken;
+    // clock_gettime(CLOCK_MONOTONIC, &endn);
+    // double time_taken = (endn.tv_sec - startn.tv_sec) * 1e9;
+    // time_taken        = (time_taken + (endn.tv_nsec - startn.tv_nsec)) * 1e-9;
+    // total_time_mm += time_taken;
 
     return C_acc;
 }
@@ -522,8 +522,8 @@ void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *trans
     // cout << "[Test 0]: Using the custom implementation and overloaded operator (gemm accelerator): " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn);
-    // MatrixXf C0 = A * B;
-    VectorXf CV0 = A * BV;
+    MatrixXf C0 = A * B;
+    // VectorXf CV0 = A * BV;
     clock_gettime(CLOCK_MONOTONIC, &endn);
     // cout << "The product of A and B is:\n" << C0 << endl;
 
@@ -536,8 +536,8 @@ void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *trans
     // cout << "[Test 1]: Using the custom implementation in regular C: " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn1);
-    // MatrixXf C1 = CustomProductC(A, B);
-    VectorXf CV1 = CustomProductC(A, BV);
+    MatrixXf C1 = CustomProductC(A, B);
+    // VectorXf CV1 = CustomProductC(A, BV);
     clock_gettime(CLOCK_MONOTONIC, &endn1);
     // cout << "The product of A and B is:\n" << C1 << endl;
 
@@ -550,8 +550,8 @@ void c_run_gemm(int m, int n, int p, void *x, unsigned *do_relu, unsigned *trans
     // cout << "[Test 2]: Using the Eigen implementation and original operator: " << endl;
 
     clock_gettime(CLOCK_MONOTONIC, &startn2);
-    // MatrixXf C2 = A.operator*(B);
-    VectorXf CV2 = A.operator*(BV);
+    MatrixXf C2 = A.operator*(B);
+    // VectorXf CV2 = A.operator*(BV);
     clock_gettime(CLOCK_MONOTONIC, &endn2);
     // cout << "The product of A and B is:\n" << C2 << endl;
 

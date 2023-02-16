@@ -52,6 +52,16 @@ int main(int argc, char **argv)
 
     // sweep of size of the array with random numbers
 
+    // for (i = 2; i < 10; i+=2) {
+    //     for (j = 2; j < 10; j+=2) {
+    //         for (k = 2; k < 10; k+=2) {
+    //             c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,
+    //                src_offset, dst_offset, acc_buf);
+    //         }
+    //     }
+    // }
+
+
     for (i = 2; i < 10; i++) {
         j = i;
         k = 1;
@@ -66,13 +76,13 @@ int main(int argc, char **argv)
                    src_offset, dst_offset, acc_buf);
     }
 
-    // for (i = 100; i < 1000; i+=100) {
-    //     j = i;
-    //     k = i;
-    //     c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
-    //     ld_offset2,
-    //                src_offset, dst_offset, acc_buf);
-    // }
+    for (i = 100; i < 1000; i+=100) {
+        j = i;
+        k = 1;
+        c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1,
+        ld_offset2,
+                   src_offset, dst_offset, acc_buf);
+    }
 
     // i = j = k = 1000;
     // c_run_gemm(i, j, k, (void *)cfg_000, do_relu, transpose, ninputs, d1, d2, d3, st_offset, ld_offset1, ld_offset2,

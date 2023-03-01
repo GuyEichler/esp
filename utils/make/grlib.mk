@@ -60,7 +60,7 @@ $(GRLIB_CFG_BUILD)/grlib_config.vhd: $(GRLIB_CFG_BUILD)/.grlib_config $(GRLIB_CF
 	$(QUIET_INFO)echo "Creating grlib_config.vhd";
 	@cd $(GRLIB_CFG_BUILD); \
 	unset LD_LIBRARY_PATH ; \
-	xvfb-run -a wish -f lconfig.tk -regen; \
+	wish -f lconfig.tk -regen; \
 	if test $$? = "2" ; then \
 	   cpp -P -I$$PWD $(TKCONFIG)/config.vhd > grlib_config.vhd; \
 	   echo $(SPACES)"INFO grlib_config.vhd written"; \

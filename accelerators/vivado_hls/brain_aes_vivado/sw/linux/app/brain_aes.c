@@ -135,7 +135,7 @@ int validate_buffer_brain_bit(token_t *out, token_t *gold)
                     skip += 1;
                 }
 
-                if ((index - skip + 1) % key_length == 0 && index != 0)
+                if ((index - skip + 1) % (key_length*(brain_key_counter+1)) == 0 && index != 0)
                 {
                     brain_key_counter++;
                     printf("----------KEY %d DONE----------\n", brain_key_counter);

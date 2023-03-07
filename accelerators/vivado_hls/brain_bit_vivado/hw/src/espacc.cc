@@ -52,6 +52,15 @@ load_data:
 
         load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
                 _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
+
+#ifndef __SYNTHESIS__
+                if(is_keys == 0)
+                    std::cout << "LOAD : Received "
+                              << _inbuff[i * VALUES_PER_WORD + j]
+                              << " in memory "
+                              << in1[dma_index + i].word[j] << std::endl;
+#endif
+
             }
         }
     }
@@ -439,6 +448,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 #ifndef __SYNTHESIS__
                 if(keys_done == key_num){
                     std::cout << "TOP : Enough keys were generated " << std::endl;
+                    std::cout << "TOP : Value of b is " << b << std::endl;
                 }
 #endif
 

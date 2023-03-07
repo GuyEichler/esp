@@ -24,9 +24,9 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 150;
-    const unsigned key_num = 78;
-    const unsigned val_num = 10;
+    const unsigned key_batch = 20;
+    const unsigned key_num = 15;
+    const unsigned val_num = 16;
     const unsigned tot_iter = 1;
 
     uint32_t in_words_adj;

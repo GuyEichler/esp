@@ -152,6 +152,8 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
          bool &is_output_ready,
          bool &load_values,
          unsigned &keys_done,
+         const unsigned &d,
+         const unsigned &h,
          // unsigned &add,
          ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
 {
@@ -160,10 +162,14 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 
     word_t Rs = R * std;
     unsigned result;
+    ap_int<33> result_alt;
     ap_uint<32> result_b;
     static unsigned output_idx = 0;
     static unsigned input_offset = 0;
     unsigned i;
+
+    unsigned mul = pow(2, d);
+    unsigned mod = pow(2, h);
 
     // static ap_uint<32> bit_val_tot = 0;
 
@@ -188,11 +194,20 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
 
         if(!filter){
 #ifndef __SYNTHESIS__
-            result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
-            // std::cout << "Output idx " << output_idx << " input idx " << i << " result " << result % 2 << std::endl;
+            result_alt = floor((float)(((val - avg) / 2) * mul));
+            result_alt = result_alt % mod;
+            //but result can only be a positive number
+            result = result_alt + mod;
+            result = result % mod;
+            // result = ((result_alt % mod) + mod) % mod;
 #endif
 #ifdef __SYNTHESIS__
-            result = floor(((val - (avg - Rs)) / (2*Rs)) * L);
+            result_alt = floor((((val - avg) / 2) * mul));
+            result_alt = result_alt % mod;
+            //but result can only be a positive number
+            result = result_alt + mod;
+            result = result % mod;
+            // result = ((result_alt % mod) + mod) % mod;
 #endif
 
             result_b = result % 2;
@@ -343,6 +358,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             const unsigned conf_info_key_num,
             const unsigned conf_info_val_num,
             const unsigned conf_info_tot_iter,
+            const unsigned conf_info_d,
+            const unsigned conf_info_h,
             dma_info_t &load_ctrl, dma_info_t &store_ctrl)
 {
 
@@ -357,6 +374,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         const unsigned key_num = conf_info_key_num;
         const unsigned val_num = conf_info_val_num;
         const unsigned tot_iter = conf_info_tot_iter;
+        const unsigned d = conf_info_d;
+        const unsigned h = conf_info_h;
 
 
         //Memories
@@ -413,6 +432,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                         is_output_ready,
                         load_values,
                         keys_done,
+                        d,
+                        h,
                         // add,
                         _outbuff_bit);
 

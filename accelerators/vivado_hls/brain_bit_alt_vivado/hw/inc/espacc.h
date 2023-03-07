@@ -88,9 +88,25 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 	 const unsigned conf_info_key_num,
 	 const unsigned conf_info_val_num,
 	 const unsigned conf_info_tot_iter,
+	 const unsigned conf_info_d,
+	 const unsigned conf_info_h,
 	 dma_info_t &load_ctrl, dma_info_t &store_ctrl);
 
 void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 	     word_t _outbuff[SIZE_OUT_CHUNK_DATA]);
+
+/* void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA], */
+/* 	 const word_t avg, */
+/* 	 const unsigned key_length, */
+/* 	 const word_t std, */
+/* 	 const word_t R, */
+/* 	 const unsigned L, */
+/* 	 const unsigned key_batch, */
+/*          const unsigned key_num, */
+/*          bool &is_output_ready, */
+/*          bool &load_values, */
+/*          unsigned &keys_done, */
+/*          const unsigned &mode, */
+/* 	 ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA]); */
 
 #endif

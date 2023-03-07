@@ -24,10 +24,12 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 150;
-    const unsigned key_num = 78;
-    const unsigned val_num = 10;
+    const unsigned key_batch = 20;
+    const unsigned key_num = 15;
+    const unsigned val_num = 16;
     const unsigned tot_iter = 1;
+    const unsigned d = 5;
+    const unsigned h = 10;
 
     uint32_t in_words_adj;
     uint32_t out_words_adj;
@@ -37,13 +39,13 @@ int main(int argc, char **argv) {
     uint32_t dma_out_size;
     uint32_t dma_size;
 
-    // FILE* fp = fopen("/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_alt_vivado/hw/tb/raw_values.txt", "r");
+    // FILE* fp = fopen("/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_vivado/hw/tb/raw_values.txt", "r");
     // FILE* fp = fopen("raw_values.txt", "r");
     const int file_length = key_length*(key_batch+1);//78736896;
     // std::ifstream inFile("raw_values.txt");
     float val_arr[file_length];
 
-    std::string inFileName = "/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_alt_vivado/hw/tb/raw_values.txt";
+    std::string inFileName = "/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_vivado/hw/tb/raw_values.txt";
     std::ifstream inFile;
     inFile.open(inFileName.c_str());
 
@@ -139,6 +141,7 @@ int main(int argc, char **argv) {
 
     float Rs = R_f * std_f;
     unsigned result;
+    int result_alt;
     unsigned added = 0;
 
     // Set golden output
@@ -149,8 +152,17 @@ int main(int argc, char **argv) {
             // if((i * in_words_adj + j == 10) || (i * in_words_adj + j == 20))
             //     val = 1000;
             bool filter = (fabs((float)val - avg_f) >= Rs);
+            int mul = pow(2, d);
+            int mod = pow(2, h);
             if(!filter){
-                result = floor((float)(((val - (avg_f - Rs)) / (2*Rs)) * L));
+                //result can be a negative number here
+                result_alt = floor((float)(((val - avg_f) / 2) * mul));
+                result_alt = result_alt % mod;
+                //but result can only be a positive number
+                result = result_alt + mod;
+                result = result % mod;
+                // result = ((result_alt % mod) + mod) % mod;
+
                 result = result % 2;
                 outbuff_gold[i * out_words_adj + j] = (word_t) result;
             }
@@ -178,6 +190,8 @@ int main(int argc, char **argv) {
         key_num,
         val_num,
         tot_iter,
+        d,
+        h,
         load, store);
 
     // Validate
@@ -251,12 +265,11 @@ int main(int argc, char **argv) {
                     }
                 }
                 else{
-                    std::cout << "SKIPPING " << std::dec << index << " skip " << skip << std::endl;
+                    std::cout << "SKIPPING" << std::endl;
                     skip += 1;
                 }
 
                 if((index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
-                    // std::cout << "LAST " << std::dec << index << " skip " << skip << std::endl;
                     key_counter++;
                     std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
                     std::cout << "\nKEY IS: [ ";
@@ -292,8 +305,7 @@ int main(int argc, char **argv) {
         unsigned index = index_offset + i + DATA_BITWIDTH / key_length;
         ap_uint<32> val = outbuff_bit[index];
         word_t val_word = 0;
-        // word_t gold_val = val_arr[offset + i];
-        word_t gold_val = inbuff[offset + i];
+        word_t gold_val = val_arr[offset + i];
         for(int b = 0; b < DATA_BITWIDTH; b++){
             ap_uint<1> val_bit = val[b];
             val_word[b] = val_bit;
@@ -301,7 +313,6 @@ int main(int argc, char **argv) {
         //word_t gold_val = val_arr[index + key_offset];
         if(val_word != gold_val)
             std::cout << "Calculated value " << std::dec << val_word << " Golden value " << gold_val << " for index " << std::dec << index << std::endl;
-            // std::cout << "Calculated value " << std::bitset<32>(val_word) << " Golden value " << std::bitset<32>(gold_val) << " for index " << std::dec << index << std::endl;
     }
 
 

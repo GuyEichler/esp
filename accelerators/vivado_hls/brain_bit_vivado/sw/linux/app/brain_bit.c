@@ -53,7 +53,7 @@ static int validate_buffer(token_t *out, token_t *gold)
 				skip += 1;
 			}
 
-			if((index - skip + 1) % key_length == 0 && index != 0){
+			if((index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
 				key_counter++;
 				printf("\n----------KEY %d DONE----------\n", key_counter);
 				printf("\nKEY IS: [ ");

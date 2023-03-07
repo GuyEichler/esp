@@ -24,8 +24,8 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 20;
-    const unsigned key_num = 15;
+    const unsigned key_batch = 200;
+    const unsigned key_num = 150;
     const unsigned val_num = 16;
     const unsigned tot_iter = 1;
 
@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
                 }
 
                 if((index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
-                    // std::cout << "LAST " << std::dec << index << " skip " << skip << std::endl;
+                    std::cout << "LAST " << std::dec << index << " skip " << skip << std::endl;
                     key_counter++;
                     std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
                     std::cout << "\nKEY IS: [ ";
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
             }
             else if(!done){
                 done = true;
-                offset = i * out_words_adj + j - skip;
+                offset = i * out_words_adj + j - (skip % key_length);
             }
             // else if(val_counter != val_num){
             //     unsigned index = i * out_words_adj + j - skip;
@@ -292,15 +292,15 @@ int main(int argc, char **argv) {
         unsigned index = index_offset + i + DATA_BITWIDTH / key_length;
         ap_uint<32> val = outbuff_bit[index];
         word_t val_word = 0;
-        // word_t gold_val = val_arr[offset + i];
-        word_t gold_val = inbuff[offset + i];
+        word_t gold_val = val_arr[offset + i];
+        //word_t gold_val = inbuff[offset + i];
         for(int b = 0; b < DATA_BITWIDTH; b++){
             ap_uint<1> val_bit = val[b];
             val_word[b] = val_bit;
         }
         //word_t gold_val = val_arr[index + key_offset];
         if(val_word != gold_val)
-            std::cout << "Calculated value " << std::dec << val_word << " Golden value " << gold_val << " for index " << std::dec << index << std::endl;
+            std::cout << "Calculated value " << std::dec << val_word << " Golden value " << gold_val << " for index " << std::dec << index << " offset " << offset+i << std::endl;
             // std::cout << "Calculated value " << std::bitset<32>(val_word) << " Golden value " << std::bitset<32>(gold_val) << " for index " << std::dec << index << std::endl;
     }
 

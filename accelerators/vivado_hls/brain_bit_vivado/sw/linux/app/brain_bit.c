@@ -64,7 +64,7 @@ static int validate_buffer(token_t *out, token_t *gold)
                         }
 			else if(!done){
 				done = true;
-				offset = i * out_words_adj + j - skip;
+				offset = i * out_words_adj + j - (skip % key_length);
 			}
 		}
 

@@ -162,7 +162,10 @@ int main(int argc, char **argv) {
                 result = result_alt + mod;
                 result = result % mod;
                 // result = ((result_alt % mod) + mod) % mod;
-
+                unsigned sum_result = 0;
+                for(unsigned k = 0; k < h; k++)
+                    sum_result = sum_result + ((result >> k) % 2);
+                result = sum_result;
                 result = result % 2;
                 outbuff_gold[i * out_words_adj + j] = (word_t) result;
             }

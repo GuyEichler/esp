@@ -161,7 +161,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     const unsigned in_length = round_up(key_length, VALUES_PER_WORD);
 
     word_t Rs = R * std;
-    unsigned result;
+    ap_uint<32> result;
     ap_int<33> result_alt;
     ap_uint<32> result_b;
     static unsigned output_idx = 0;
@@ -199,6 +199,11 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
             //but result can only be a positive number
             result = result_alt + mod;
             result = result % mod;
+            unsigned sum_result = 0;
+            for(unsigned k = 0; k < H_MAX; k++)
+                if(k < h)
+                    sum_result = sum_result + result[k];
+            result = sum_result;
             // result = ((result_alt % mod) + mod) % mod;
 #endif
 #ifdef __SYNTHESIS__
@@ -207,6 +212,11 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
             //but result can only be a positive number
             result = result_alt + mod;
             result = result % mod;
+            unsigned sum_result = 0;
+            for(unsigned k = 0; k < H_MAX; k++)
+                if(k < h)
+                    sum_result = sum_result + result[k];
+            result = sum_result;
             // result = ((result_alt % mod) + mod) % mod;
 #endif
 

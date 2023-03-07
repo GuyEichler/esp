@@ -23,4 +23,7 @@
 
 #define DATA_BITWIDTH_LOG 5 //log2(32)
 
+#define H_MAX 16
+#define D_MAX 16
+
 #endif

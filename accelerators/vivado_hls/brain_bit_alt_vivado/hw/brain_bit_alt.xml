@@ -10,5 +10,7 @@
     <param name="key_num" desc="key_num" />
     <param name="val_num" desc="val_num" />
     <param name="tot_iter" desc="tot_iter" />
+    <param name="d" desc="d" />
+    <param name="h" desc="h" />
   </accelerator>
 </sld>

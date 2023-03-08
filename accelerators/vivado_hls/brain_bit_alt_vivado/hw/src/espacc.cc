@@ -13,7 +13,7 @@ void load(word_t _inbuff[SIZE_IN_CHUNK_DATA], dma_word_t *in1,
 	 const unsigned key_length,
 	 const word_t std,
 	 const word_t R,
-	 const unsigned L,
+	 // const unsigned L,
 	 const unsigned key_batch,
           const unsigned val_num,
           bool &load_values,
@@ -63,7 +63,7 @@ void store(out_dma_word_t *out,
 	 const unsigned key_length,
 	 const word_t std,
 	 const word_t R,
-	 const unsigned L,
+	 // const unsigned L,
 	 const unsigned key_batch,
            const unsigned key_num,
            const unsigned val_num,
@@ -146,7 +146,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 	 const unsigned key_length,
 	 const word_t std,
 	 const word_t R,
-	 const unsigned L,
+	 // const unsigned L,
 	 const unsigned key_batch,
             const unsigned key_num,
          bool &is_output_ready,
@@ -168,8 +168,8 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     static unsigned input_offset = 0;
     unsigned i;
 
-    unsigned mul = pow(2, d);
-    unsigned mod = pow(2, h);
+    unsigned mul = 1 << (d-1);//pow(2, d-1);
+    unsigned mod = 1 << h;//pow(2, h);
 
     // static ap_uint<32> bit_val_tot = 0;
 
@@ -182,44 +182,66 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
 #pragma HLS loop_tripcount max=1024
 
         word_t val = _inbuff[i];
+        word_t val_avg = val - avg;
         bool filter;// = (fabs(val - avg) >= Rs);
 
 #ifndef __SYNTHESIS__
-        filter = (fabs((float)val - (float)avg) >= (float)Rs);
+        // filter = (fabs((float)val - (float)avg) >= (float)Rs);
+        float val_avg_f = (float)val - (float)avg;
+        filter = ((val_avg_f - (float)Rs) >= 0) || ((val_avg_f + (float)Rs) <= 0);
 #endif
 
 #ifdef __SYNTHESIS__
-        filter = (fabs(val - avg) >= Rs);
+
+        // filter = (fabs(val_avg) >= Rs);
+        filter = ((val_avg - Rs) >= 0) || ((val_avg + Rs) <= 0);
 #endif
 
         if(!filter){
+
 #ifndef __SYNTHESIS__
-            result_alt = floor((float)(((val - avg) / 2) * mul));
-            result_alt = result_alt % mod;
-            //but result can only be a positive number
-            result = result_alt + mod;
-            result = result % mod;
-            unsigned sum_result = 0;
-            for(unsigned k = 0; k < H_MAX; k++)
-                if(k < h)
-                    sum_result = sum_result + result[k];
-            result = sum_result;
-            // result = ((result_alt % mod) + mod) % mod;
+            result_alt = floor((float)((val - avg) * mul));
 #endif
 #ifdef __SYNTHESIS__
-            result_alt = floor((((val - avg) / 2) * mul));
-            result_alt = result_alt % mod;
-            //but result can only be a positive number
-            result = result_alt + mod;
-            result = result % mod;
-            unsigned sum_result = 0;
-            for(unsigned k = 0; k < H_MAX; k++)
-                if(k < h)
-                    sum_result = sum_result + result[k];
-            result = sum_result;
-            // result = ((result_alt % mod) + mod) % mod;
+            result_alt = floor((val_avg) << (d-1));
 #endif
 
+            //result_alt = result_alt % mod;
+
+// #ifndef __SYNTHESIS__
+            unsigned sum_result_int = 0;
+        SUM_LOOP_INT:for(unsigned k = 0; k < H_MAX; k++)
+                if(k < h)
+                    sum_result_int = sum_result_int + result_alt[k];
+
+            // std::cout << "COMPUTE : sum of bits for integer is " << sum_result_int << std::endl;
+            // std::cout << "COMPUTE : integer is " << result_alt << std::endl;
+// #endif
+
+// #ifndef __SYNTHESIS__
+//             result_alt = result_alt % mod;
+//             //but result can only be a positive number
+//             result = result_alt + mod;
+//             //result = result % mod;
+//             unsigned sum_result = 0;
+//         SUM_LOOP:for(unsigned k = 0; k < H_MAX; k++)
+//                 if(k < h)
+//                     sum_result = sum_result + result[k];
+//             result = sum_result;
+
+// #endif
+
+            result = sum_result_int;
+
+// #ifndef __SYNTHESIS__
+//             // std::cout << "COMPUTE : sum of bits for uint is " << sum_result << std::endl;
+//             // std::cout << "COMPUTE : uint is " << result << std::endl;
+//             if(sum_result != sum_result_int)
+//                 std::cout << "COMPUTE : result not equal!!!!!!!!!!!! " << result << std::endl;
+// #endif
+            // result = ((result_alt % mod) + mod) % mod;
+
+            //Get bits
             result_b = result % 2;
             unsigned bit = output_idx % DATA_BITWIDTH;
             unsigned word = output_idx >> DATA_BITWIDTH_LOG;
@@ -322,7 +344,7 @@ void compute_val(word_t _inbuff[SIZE_IN_CHUNK_DATA],
                  const unsigned key_length,
                  const word_t std,
                  const word_t R,
-                 const unsigned L,
+                 // const unsigned L,
                  const unsigned key_batch,
                  const unsigned val_num,
                  ap_uint<32> _outbuff_bit[SIZE_OUT_CHUNK_DATA])
@@ -363,7 +385,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
             const unsigned conf_info_key_length,
             const float conf_info_std,
             const float conf_info_R,
-            const unsigned conf_info_L,
+            // const unsigned conf_info_L,
             const unsigned conf_info_key_batch,
             const unsigned conf_info_key_num,
             const unsigned conf_info_val_num,
@@ -379,7 +401,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         // const unsigned val_length = conf_info_key_length << DATA_BITWIDTH_LOG;
         const word_t std = conf_info_std;
         const word_t R = conf_info_R;
-        const unsigned L = conf_info_L;
+        // const unsigned L = conf_info_L;
         const unsigned key_batch = conf_info_key_batch;
         const unsigned key_num = conf_info_key_num;
         const unsigned val_num = conf_info_val_num;
@@ -423,7 +445,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                      key_length,
                      std,
                      R,
-                     L,
+                     // L,
                      key_batch,
                      key_num,
                      load_values,
@@ -436,7 +458,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                         key_length,
                         std,
                         R,
-                        L,
+                        // L,
                         key_batch,
                         key_num,
                         is_output_ready,
@@ -453,7 +475,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                       key_length,
                       std,
                       R,
-                      L,
+                      // L,
                       key_batch,
                       key_num,
                       val_num,
@@ -498,7 +520,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                      key_length,
                      std,
                      R,
-                     L,
+                     // L,
                      key_batch,
                      val_num,
                      load_values_raw,
@@ -511,7 +533,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                             key_length,
                             std,
                             R,
-                            L,
+                            // L,
                             key_batch,
                             val_num,
                             _outbuff_bit);
@@ -522,7 +544,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
                       key_length,
                       std,
                       R,
-                      L,
+                      // L,
                       key_batch,
                       key_num,
                       val_num,

@@ -19,6 +19,8 @@ typedef int32_t token_t;
 #define KEY_NUM 15
 #define VAL_NUM 2
 #define TOT_ITER 1
+#define D 5
+#define H 10
 
 /* <<--params-->> */
 const float avg = AVG;
@@ -28,11 +30,13 @@ const float std = STD;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = R_val;
 unsigned* R_ptr = (unsigned*)&R;
-const int32_t L = L_val;
+/* const int32_t L = L_val; */
 const int32_t key_batch = KEY_BATCH;
 const int32_t key_num = KEY_NUM;
 const int32_t val_num = VAL_NUM;
 const int32_t tot_iter = TOT_ITER;
+const int32_t d = D;
+const int32_t h = H;
 const float Rs = R * std;
 
 #define NACC 1
@@ -44,11 +48,13 @@ struct brain_bit_alt_vivado_access brain_bit_alt_cfg_000[] = {
 		.key_length = KEY_LENGTH,
 		.std = STD,
 		.R = R,
-		.L = L,
+		/* .L = L, */
 		.key_batch = KEY_BATCH,
 		.key_num = KEY_NUM,
 		.val_num = VAL_NUM,
 		.tot_iter = TOT_ITER,
+		.d = D,
+		.h = H,
 		.src_offset = 0,
 		.dst_offset = 0,
 		.esp.coherence = ACC_COH_NONE,

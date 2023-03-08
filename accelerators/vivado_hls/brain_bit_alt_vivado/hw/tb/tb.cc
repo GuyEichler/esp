@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 20;
+    const unsigned key_batch = 200;
     const unsigned key_num = 15;
     const unsigned val_num = 16;
     const unsigned tot_iter = 1;
@@ -156,7 +156,7 @@ int main(int argc, char **argv) {
             int mod = pow(2, h);
             if(!filter){
                 //result can be a negative number here
-                result_alt = floor((float)(((val - avg_f) / 2) * mul));
+                result_alt = floor((float)(((val - avg_f) / (2*Rs)) * Rs * mul));
                 result_alt = result_alt % mod;
                 //but result can only be a positive number
                 result = result_alt + mod;
@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
         key_length,
         std_f,
         R_f,
-        L,
+        // L,
         key_batch,
         key_num,
         val_num,
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
             }
             else if(!done){
                 done = true;
-                offset = i * out_words_adj + j - skip;
+                offset = i * out_words_adj + j - (skip % key_length);
             }
             // else if(val_counter != val_num){
             //     unsigned index = i * out_words_adj + j - skip;

@@ -13,14 +13,16 @@
 #define DRV_NAME	"brain_bit_alt_vivado"
 
 /* <<--regs-->> */
-#define BRAIN_BIT_ALT_TOT_ITER_REG 0x60
-#define BRAIN_BIT_ALT_VAL_NUM_REG 0x5c
-#define BRAIN_BIT_ALT_KEY_NUM_REG 0x58
-#define BRAIN_BIT_ALT_AVG_REG 0x54
-#define BRAIN_BIT_ALT_KEY_LENGTH_REG 0x50
-#define BRAIN_BIT_ALT_STD_REG 0x4c
-#define BRAIN_BIT_ALT_R_REG 0x48
-#define BRAIN_BIT_ALT_L_REG 0x44
+#define BRAIN_BIT_ALT_H_REG 0x64
+#define BRAIN_BIT_ALT_D_REG 0x60
+#define BRAIN_BIT_ALT_TOT_ITER_REG 0x5c
+#define BRAIN_BIT_ALT_VAL_NUM_REG 0x58
+#define BRAIN_BIT_ALT_KEY_NUM_REG 0x54
+#define BRAIN_BIT_ALT_AVG_REG 0x50
+#define BRAIN_BIT_ALT_KEY_LENGTH_REG 0x4c
+#define BRAIN_BIT_ALT_STD_REG 0x48
+#define BRAIN_BIT_ALT_R_REG 0x44
+/* #define BRAIN_BIT_ALT_L_REG 0x44 */
 #define BRAIN_BIT_ALT_KEY_BATCH_REG 0x40
 
 struct brain_bit_alt_vivado_device {
@@ -34,7 +36,7 @@ static struct of_device_id brain_bit_alt_device_ids[] = {
 		.name = "SLD_BRAIN_BIT_ALT_VIVADO",
 	},
 	{
-		.name = "eb_1e4",
+		.name = "eb_1f4",
 	},
 	{
 		.compatible = "sld,brain_bit_alt_vivado",
@@ -58,11 +60,13 @@ static void brain_bit_alt_prep_xfer(struct esp_device *esp, void *arg)
 	iowrite32be(a->key_length, esp->iomem + BRAIN_BIT_ALT_KEY_LENGTH_REG);
 	iowrite32be(a->std, esp->iomem + BRAIN_BIT_ALT_STD_REG);
 	iowrite32be(a->R, esp->iomem + BRAIN_BIT_ALT_R_REG);
-	iowrite32be(a->L, esp->iomem + BRAIN_BIT_ALT_L_REG);
+	/* iowrite32be(a->L, esp->iomem + BRAIN_BIT_ALT_L_REG); */
 	iowrite32be(a->key_batch, esp->iomem + BRAIN_BIT_ALT_KEY_BATCH_REG);
 	iowrite32be(a->key_num, esp->iomem + BRAIN_BIT_ALT_KEY_NUM_REG);
 	iowrite32be(a->val_num, esp->iomem + BRAIN_BIT_ALT_VAL_NUM_REG);
 	iowrite32be(a->tot_iter, esp->iomem + BRAIN_BIT_ALT_TOT_ITER_REG);
+	iowrite32be(a->d, esp->iomem + BRAIN_BIT_ALT_D_REG);
+	iowrite32be(a->h, esp->iomem + BRAIN_BIT_ALT_H_REG);
 	iowrite32be(a->src_offset, esp->iomem + SRC_OFFSET_REG);
 	iowrite32be(a->dst_offset, esp->iomem + DST_OFFSET_REG);
 

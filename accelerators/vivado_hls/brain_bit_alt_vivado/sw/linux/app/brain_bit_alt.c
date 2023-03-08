@@ -107,8 +107,20 @@ static void init_buffer(token_t *in, token_t * gold)
 		for (j = 0; j < key_length; j++){
 			float val = val_arr[i * in_words_adj + j];
                         bool filter = (fabs((float)val - avg) >= Rs);
+			int mul = pow(2, d);
+			int mod = pow(2, h);
 			if(!filter){
-				int32_t result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
+				//result can be a negative number here
+				int result_alt = floor((float)(((val - avg) / (2*Rs)) * Rs * mul));
+				result_alt = result_alt % mod;
+				//but result can only be a positive number
+				unsigned result = result_alt + mod;
+				result = result % mod;
+				// result = ((result_alt % mod) + mod) % mod;
+				unsigned sum_result = 0;
+				for(unsigned k = 0; k < h; k++)
+					sum_result = sum_result + ((result >> k) % 2);
+				result = sum_result;
 				result = result % 2;
 				gold[i * out_words_adj + j] = (token_t) result;
                                 //printf("Generated golden value %d\n", gold[i * out_words_adj + j]);
@@ -161,9 +173,12 @@ int main(int argc, char **argv)
 	printf("  .key_length = %d\n", key_length);
 	printf("  .std = %f\n", std);
 	printf("  .R = %f\n", R);
-	printf("  .L = %d\n", L);
+	/* printf("  .L = %d\n", L); */
 	printf("  .key_batch = %d\n", key_batch);
 	printf("  .key_num = %d\n", key_num);
+	printf("  .tot_iter = %d\n", tot_iter);
+	printf("  .d = %d\n", d);
+	printf("  .h = %d\n", h);
 	printf("\n  ** START **\n");
 
         unsigned avg_u = *avg_ptr;

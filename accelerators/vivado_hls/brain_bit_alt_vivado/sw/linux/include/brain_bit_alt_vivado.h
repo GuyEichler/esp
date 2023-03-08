@@ -24,11 +24,13 @@ struct brain_bit_alt_vivado_access {
 	unsigned key_length;
 	unsigned std;
 	unsigned R;
-	unsigned L;
+	/* unsigned L; */
 	unsigned key_batch;
 	unsigned key_num;
 	unsigned val_num;
 	unsigned tot_iter;
+	unsigned d;
+	unsigned h;
 	unsigned src_offset;
 	unsigned dst_offset;
 };

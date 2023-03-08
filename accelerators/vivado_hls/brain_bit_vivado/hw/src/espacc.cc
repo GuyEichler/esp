@@ -185,14 +185,18 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
 #pragma HLS loop_tripcount max=1024
 
         word_t val = _inbuff[i];
+        word_t val_avg = val - avg;
         bool filter;// = (fabs(val - avg) >= Rs);
 
 #ifndef __SYNTHESIS__
-        filter = (fabs((float)val - (float)avg) >= (float)Rs);
+        // filter = (fabs((float)val - (float)avg) >= (float)Rs);
+        float val_avg_f = (float)val - (float)avg;
+        filter = ((val_avg_f - (float)Rs) >= 0) || ((val_avg_f + (float)Rs) <= 0);
 #endif
 
 #ifdef __SYNTHESIS__
-        filter = (fabs(val - avg) >= Rs);
+        // filter = (fabs(val_avg) >= Rs);
+        filter = ((val_avg - Rs) >= 0) || ((val_avg + Rs) <= 0);
 #endif
 
         if(!filter){
@@ -201,7 +205,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
             // std::cout << "Output idx " << output_idx << " input idx " << i << " result " << result % 2 << std::endl;
 #endif
 #ifdef __SYNTHESIS__
-            result = floor(((val - (avg - Rs)) / (2*Rs)) * L);
+            result = floor(((val_avg + Rs) / (2*Rs)) * L);
 #endif
 
             result_b = result % 2;

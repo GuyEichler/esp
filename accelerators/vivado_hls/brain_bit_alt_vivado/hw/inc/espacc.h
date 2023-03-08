@@ -83,7 +83,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 	 const unsigned conf_info_key_length,
 	 const float conf_info_std,
 	 const float conf_info_R,
-	 const unsigned conf_info_L,
+	 /* const unsigned conf_info_L, */
 	 const unsigned conf_info_key_batch,
 	 const unsigned conf_info_key_num,
 	 const unsigned conf_info_val_num,

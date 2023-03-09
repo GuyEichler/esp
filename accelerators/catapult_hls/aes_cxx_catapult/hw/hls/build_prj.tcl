@@ -171,7 +171,7 @@ solution file add ../inc/properties_utils.h -type C++
 solution file add ../inc/modes/gcm.h -type C++
 
 solution file add ../src/aes.cpp -type C++
-solution file add ../src/aes_cxx_catapult.cpp -type C++
+solution file add ../src/aes_cxx_catapult_p2p.cpp -type C++
 #solution file add ../src/dec.cpp -type C++
 #solution file add ../src/enc.cpp -type C++
 #solution file add ../src/exp.cpp -type C++
@@ -181,7 +181,7 @@ solution file add ../src/aes_cxx_catapult.cpp -type C++
 
 solution file add ../tb/main.cpp -type C++ -exclude true
 
-solution file set ../src/aes_cxx_catapult.cpp -args -DDMA_WIDTH=$DMA_WIDTH
+solution file set ../src/aes_cxx_catapult_p2p.cpp -args -DDMA_WIDTH=$DMA_WIDTH
 solution file set ../inc/aes_cxx_catapult.hpp -args -DDMA_WIDTH=$DMA_WIDTH
 solution file set ../tb/main.cpp -args -DDMA_WIDTH=$DMA_WIDTH
 
@@ -344,7 +344,7 @@ if {$opt(hsynth)} {
     directive set /aes_cxx_catapult/core/main -MERGEABLE false
     directive set /aes_cxx_catapult/core/LOAD_KEY_CTRL_LOOP -MERGEABLE false
     directive set /aes_cxx_catapult/core/LOAD_KEY_LOOP -MERGEABLE false
-    directive set /aes_cxx_catapult/core/LOAD_INPUT_CTRL_LOOP -MERGEABLE false
+    # directive set /aes_cxx_catapult/core/LOAD_INPUT_CTRL_LOOP -MERGEABLE false
     directive set /aes_cxx_catapult/core/LOAD_INPUT_LOOP -MERGEABLE false
     directive set /aes_cxx_catapult/core/STORE_CTRL_LOOP -MERGEABLE false
     directive set /aes_cxx_catapult/core/STORE_LOOP -MERGEABLE false

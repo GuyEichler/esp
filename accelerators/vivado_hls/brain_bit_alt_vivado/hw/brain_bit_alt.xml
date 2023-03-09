@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sld>
+  <accelerator name="brain_bit_alt" desc="Accelerator BRAIN_BIT_ALT" data_size="4" device_id="1f4" hls_tool="vivado_hls">
+    <param name="key_batch" desc="key_batch" />
+    <param name="R" desc="R" />
+    <param name="std" desc="std" />
+    <param name="key_length" desc="key_length" />
+    <param name="avg" desc="avg" />
+    <param name="key_num" desc="key_num" />
+    <param name="val_num" desc="val_num" />
+    <param name="tot_iter" desc="tot_iter" />
+    <param name="d" desc="d" />
+    <param name="h" desc="h" />
+  </accelerator>
+</sld>

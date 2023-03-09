@@ -15,6 +15,7 @@
 
 //#include "input.h"
 #include "input_full.h"
+//#include "input_10mil_full.h"
 #define DATA_BITWIDTH 32
 
 typedef int32_t token_t;
@@ -26,8 +27,8 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 }
 
 
-#define SLD_BRAIN_BIT 0x1e4
-#define DEV_NAME "sld,brain_bit_vivado"
+#define SLD_BRAIN_BIT_ALT 0x1f4
+#define DEV_NAME "sld,brain_bit_alt_vivado"
 
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
@@ -37,11 +38,13 @@ const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
-const int32_t L = 1500;
-const int32_t key_batch = 20;
-const int32_t key_num = 1;
-const int32_t val_num = 1;
+/* const int32_t L = 1500; */
+const int32_t key_batch = 200;
+const int32_t key_num = 100;
+const int32_t val_num = 15;
 const int32_t tot_iter = 1;
+const int32_t d = 5;
+const int32_t h = 10;
 const float Rs = R * std;
 
 static unsigned in_words_adj;
@@ -65,15 +68,17 @@ static unsigned mem_size;
 
 /* User defined registers */
 /* <<--regs-->> */
-#define BRAIN_BIT_TOT_ITER_REG 0x60
-#define BRAIN_BIT_VAL_NUM_REG 0x5c
-#define BRAIN_BIT_KEY_NUM_REG 0x58
-#define BRAIN_BIT_AVG_REG 0x54
-#define BRAIN_BIT_KEY_LENGTH_REG 0x50
-#define BRAIN_BIT_STD_REG 0x4c
-#define BRAIN_BIT_R_REG 0x48
-#define BRAIN_BIT_L_REG 0x44
-#define BRAIN_BIT_KEY_BATCH_REG 0x40
+#define BRAIN_BIT_ALT_H_REG 0x64
+#define BRAIN_BIT_ALT_D_REG 0x60
+#define BRAIN_BIT_ALT_TOT_ITER_REG 0x5c
+#define BRAIN_BIT_ALT_VAL_NUM_REG 0x58
+#define BRAIN_BIT_ALT_KEY_NUM_REG 0x54
+#define BRAIN_BIT_ALT_AVG_REG 0x50
+#define BRAIN_BIT_ALT_KEY_LENGTH_REG 0x4c
+#define BRAIN_BIT_ALT_STD_REG 0x48
+#define BRAIN_BIT_ALT_R_REG 0x44
+/* #define BRAIN_BIT_ALT_L_REG 0x44 */
+#define BRAIN_BIT_ALT_KEY_BATCH_REG 0x40
 
 
 /* static int validate_buf(token_t *out, token_t *gold) */
@@ -161,8 +166,20 @@ static void init_buf (token_t *in, token_t * gold)
 		for (j = 0; j < key_length; j++){
 			float val = val_arr[i * in_words_adj + j];
                         bool filter = (fabs((float)val - avg) >= Rs);
+			int mul = pow(2, d);
+			int mod = pow(2, h);
 			if(!filter){
-				int32_t result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
+				//result can be a negative number here
+				int result_alt = floor((float)(((val - avg) / (2*Rs)) * Rs * mul));
+				result_alt = result_alt % mod;
+				//but result can only be a positive number
+				unsigned result = result_alt + mod;
+				result = result % mod;
+				// result = ((result_alt % mod) + mod) % mod;
+				unsigned sum_result = 0;
+				for(unsigned k = 0; k < h; k++)
+					sum_result = sum_result + ((result >> k) % 2);
+				result = sum_result;
 				result = result % 2;
 				gold[i * out_words_adj + j] = (token_t) result;
 			}
@@ -208,9 +225,9 @@ int main(int argc, char * argv[])
 	// Search for the device
 	printf("Scanning device tree... \n");
 
-	ndev = probe(&espdevs, VENDOR_SLD, SLD_BRAIN_BIT, DEV_NAME);
+	ndev = probe(&espdevs, VENDOR_SLD, SLD_BRAIN_BIT_ALT, DEV_NAME);
 	if (ndev == 0) {
-		printf("brain_bit not found\n");
+		printf("brain_bit_alt not found\n");
 		return 0;
 	}
 
@@ -278,31 +295,33 @@ int main(int argc, char * argv[])
 
 			// Pass accelerator-specific configuration parameters
 			/* <<--regs-config-->> */
-			iowrite32(dev, BRAIN_BIT_AVG_REG, *avg_ptr);
-                        /* iowrite32(dev, BRAIN_BIT_AVG_REG, avg_fixed); */
-			iowrite32(dev, BRAIN_BIT_KEY_LENGTH_REG, key_length);
-                        iowrite32(dev, BRAIN_BIT_STD_REG, *std_ptr);
-			/* iowrite32(dev, BRAIN_BIT_STD_REG, std_fixed); */
-                        iowrite32(dev, BRAIN_BIT_R_REG, *R_ptr);
-			/* iowrite32(dev, BRAIN_BIT_R_REG, R_fixed); */
-			iowrite32(dev, BRAIN_BIT_L_REG, L);
-			iowrite32(dev, BRAIN_BIT_KEY_BATCH_REG, key_batch);
-			iowrite32(dev, BRAIN_BIT_KEY_NUM_REG, key_num);
-			iowrite32(dev, BRAIN_BIT_VAL_NUM_REG, val_num);
-			iowrite32(dev, BRAIN_BIT_TOT_ITER_REG, tot_iter);
+			iowrite32(dev, BRAIN_BIT_ALT_AVG_REG, *avg_ptr);
+                        /* iowrite32(dev, BRAIN_BIT_ALT_AVG_REG, avg_fixed); */
+			iowrite32(dev, BRAIN_BIT_ALT_KEY_LENGTH_REG, key_length);
+                        iowrite32(dev, BRAIN_BIT_ALT_STD_REG, *std_ptr);
+			/* iowrite32(dev, BRAIN_BIT_ALT_STD_REG, std_fixed); */
+                        iowrite32(dev, BRAIN_BIT_ALT_R_REG, *R_ptr);
+			/* iowrite32(dev, BRAIN_BIT_ALT_R_REG, R_fixed); */
+			/* iowrite32(dev, BRAIN_BIT_ALT_L_REG, L); */
+			iowrite32(dev, BRAIN_BIT_ALT_KEY_BATCH_REG, key_batch);
+			iowrite32(dev, BRAIN_BIT_ALT_KEY_NUM_REG, key_num);
+			iowrite32(dev, BRAIN_BIT_ALT_VAL_NUM_REG, val_num);
+			iowrite32(dev, BRAIN_BIT_ALT_TOT_ITER_REG, tot_iter);
+			iowrite32(dev, BRAIN_BIT_ALT_D_REG, d);
+			iowrite32(dev, BRAIN_BIT_ALT_H_REG, h);
 
 			// Flush (customize coherence model here)
 			esp_flush(coherence);
 
 			esp_monitor_args_t mon_args;
-			const int ACC_TILE_IDX = 2;
+			const int ACC_TILE_IDX = 3;
 			mon_args.read_mode = ESP_MON_READ_SINGLE;
 			mon_args.tile_index = ACC_TILE_IDX;
 			mon_args.mon_index = MON_DVFS_BASE_INDEX + 3;
 			unsigned int cycles_start, cycles_end, cycles_diff;
 
 			unsigned total_time = 0;
-			unsigned N_runs = 2;
+			unsigned N_runs = 1;
 
 			for(int k = 0; k < N_runs; k++){
 				// Start accelerators

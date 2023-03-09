@@ -18,14 +18,14 @@ int main(int argc, char **argv) {
     /* <<--params-->> */
     const word_t avg = 3.0677295382679177;
     const float avg_f = 3.0677295382679177;
-    const unsigned key_length = 128;
+    const unsigned key_length = 1152;
     const word_t std = 38.626628825256695;
     const float std_f = 38.626628825256695;
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
     const unsigned key_batch = 200;
-    const unsigned key_num = 15;
+    const unsigned key_num = 100;
     const unsigned val_num = 16;
     const unsigned tot_iter = 1;
     const unsigned d = 5;
@@ -283,7 +283,10 @@ int main(int argc, char **argv) {
             }
             else if(!done){
                 done = true;
+                unsigned max_chunk = 1024;
                 offset = i * out_words_adj + j - (skip % key_length);
+                if(key_length > max_chunk)
+                    offset += key_length - max_chunk;
             }
             // else if(val_counter != val_num){
             //     unsigned index = i * out_words_adj + j - skip;

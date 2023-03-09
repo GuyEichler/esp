@@ -3,6 +3,8 @@
 #include "libesp.h"
 #include "cfg.h"
 #include "input_full.h"
+//#include "input_1mil_full.h"
+//#include "input_10mil_full.h"
 
 static unsigned in_words_adj;
 static unsigned out_words_adj;
@@ -64,7 +66,10 @@ static int validate_buffer(token_t *out, token_t *gold)
                         }
 			else if(!done){
 				done = true;
+				unsigned max_chunk = 1024;
 				offset = i * out_words_adj + j - (skip % key_length);
+				if(key_length > max_chunk)
+					offset += key_length - max_chunk;
 			}
 		}
 

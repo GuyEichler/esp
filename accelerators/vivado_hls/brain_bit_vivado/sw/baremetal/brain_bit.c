@@ -14,7 +14,8 @@
 #include "monitors.h"
 
 //#include "input.h"
-#include "input_full.h"
+//#include "input_full.h"
+#include "input_10mil_full.h"
 #define DATA_BITWIDTH 32
 
 typedef int32_t token_t;
@@ -38,9 +39,9 @@ unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
-const int32_t key_batch = 20;
-const int32_t key_num = 1;
-const int32_t val_num = 1;
+const int32_t key_batch = 2000;
+const int32_t key_num = 1000;
+const int32_t val_num = 15;
 const int32_t tot_iter = 1;
 const float Rs = R * std;
 
@@ -125,7 +126,10 @@ static int validate_buf(token_t *out, token_t *gold)
 			}
 			else if(!done){
 				done = true;
+				unsigned max_chunk = 1024;
 				offset = i * out_words_adj + j - (skip % key_length);
+				if(key_length > max_chunk)
+					offset += key_length - max_chunk;
 			}
 		}
 

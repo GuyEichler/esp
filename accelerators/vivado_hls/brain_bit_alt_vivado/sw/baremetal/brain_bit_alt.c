@@ -130,7 +130,10 @@ static int validate_buf(token_t *out, token_t *gold)
 			}
 			else if(!done){
 				done = true;
+				unsigned max_chunk = 1024;
 				offset = i * out_words_adj + j - (skip % key_length);
+				if(key_length > max_chunk)
+					offset += key_length - max_chunk;
 			}
 		}
 

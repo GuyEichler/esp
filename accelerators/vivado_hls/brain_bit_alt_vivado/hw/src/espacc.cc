@@ -22,12 +22,19 @@ void load(word_t _inbuff[SIZE_IN_CHUNK_DATA], dma_word_t *in1,
 {
 load_data:
 
-    const unsigned length = round_up(key_length, VALUES_PER_WORD);
+    unsigned length = 0; //round_up(key_length, VALUES_PER_WORD);
+
+    if(key_length > SIZE_IN_CHUNK_DATA)
+        length = round_up(SIZE_IN_CHUNK_DATA, VALUES_PER_WORD);
+    else
+        length = round_up(key_length, VALUES_PER_WORD);
+
     const unsigned index = length * batch;
     const unsigned val_length = round_up(val_num, VALUES_PER_WORD);
+    // const unsigned val_index = round_up(key_length, VALUES_PER_WORD) * batch;
 
     unsigned dma_length = is_keys ? length / VALUES_PER_WORD : val_length / VALUES_PER_WORD;
-    unsigned dma_index = index / VALUES_PER_WORD;
+    unsigned dma_index = index / VALUES_PER_WORD;//is_keys ? index / VALUES_PER_WORD : val_index / VALUES_PER_WORD;
 
     if(load_values){
 
@@ -177,7 +184,9 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     std::cout << "COMPUTE : Input offset is " << input_offset << std::endl;
 #endif
 
-COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
+    unsigned limit = in_length < SIZE_IN_CHUNK_DATA ? in_length : SIZE_IN_CHUNK_DATA;
+
+COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
 
 #pragma HLS loop_tripcount max=1024
 
@@ -282,7 +291,8 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
         }
 
         if(is_output_ready){
-            if(i != in_length - 1){
+            // if(i != in_length - 1){
+            if(i != limit - 1){
                 input_offset = i+1;
 
 #ifndef __SYNTHESIS__
@@ -303,7 +313,8 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
         }
     }
 
-    if(i == in_length){
+    // if(i == in_length){
+    if(i == limit){
         load_values = true;
         input_offset = 0;
 

@@ -15,6 +15,7 @@
 
 //#include "input.h"
 #include "input_full.h"
+//#include "input_10mil_full.h"
 #define DATA_BITWIDTH 32
 
 typedef int32_t token_t;
@@ -38,9 +39,9 @@ unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 /* const int32_t L = 1500; */
-const int32_t key_batch = 20;
-const int32_t key_num = 1;
-const int32_t val_num = 1;
+const int32_t key_batch = 200;
+const int32_t key_num = 100;
+const int32_t val_num = 15;
 const int32_t tot_iter = 1;
 const int32_t d = 5;
 const int32_t h = 10;
@@ -129,7 +130,7 @@ static int validate_buf(token_t *out, token_t *gold)
 			}
 			else if(!done){
 				done = true;
-				offset = i * out_words_adj + j - skip;
+				offset = i * out_words_adj + j - (skip % key_length);
 			}
 		}
 
@@ -320,7 +321,7 @@ int main(int argc, char * argv[])
 			unsigned int cycles_start, cycles_end, cycles_diff;
 
 			unsigned total_time = 0;
-			unsigned N_runs = 2;
+			unsigned N_runs = 1;
 
 			for(int k = 0; k < N_runs; k++){
 				// Start accelerators

@@ -49,17 +49,17 @@ static int validate_buffer(token_t *out, token_t *gold)
 				}
 			}
 			else{
-				printf("SKIPPING\n");
+				/* printf("SKIPPING\n"); */
 				skip += 1;
 			}
 
 			if((index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
 				key_counter++;
-				printf("\n----------KEY %d DONE----------\n", key_counter);
-				printf("\nKEY IS: [ ");
-				for(int k = key_length / 32 - 1; k >= 0; k--)
-					printf("0x%x ", out[word-k]);
-				printf("]\n\n");
+				/* printf("\n----------KEY %d DONE----------\n", key_counter); */
+				/* printf("\nKEY IS: [ "); */
+				/* for(int k = key_length / 32 - 1; k >= 0; k--) */
+				/* 	printf("0x%x ", out[word-k]); */
+				/* printf("]\n\n"); */
 			}
                         }
 			else if(!done){
@@ -182,11 +182,19 @@ int main(int argc, char **argv)
 	for(int i = 0; i < out_len; i++)
 		out_location[i] = 0;
 
-	esp_run(cfg_000, NACC);
+	unsigned long long total_time = 0;
+	int N_runs = 100;
+	for(int k = 0; k < N_runs; k++){
+		esp_run_no_print(cfg_000, NACC);
+		total_time += cfg_000[0].hw_ns;
+	}
+	total_time = total_time / N_runs;
 
 	printf("\n  ** DONE **\n");
 
 	errors = validate_buffer(&buf[out_offset], gold);
+
+	printf("\n Average runtime %d runs = %llu \n", N_runs, total_time);
 
 	free(gold);
 	esp_free(buf);

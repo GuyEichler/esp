@@ -11,6 +11,7 @@
 #include <fixed_point.h>
 #include <math.h>
 #include <stdbool.h>
+#include "monitors.h"
 
 //#include "input.h"
 #include "input_full.h"
@@ -31,13 +32,13 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 32;
+const int32_t key_length = 128;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 /* const int32_t L = 1500; */
-const int32_t key_batch = 2;
+const int32_t key_batch = 20;
 const int32_t key_num = 1;
 const int32_t val_num = 1;
 const int32_t tot_iter = 1;
@@ -311,42 +312,68 @@ int main(int argc, char * argv[])
 			// Flush (customize coherence model here)
 			esp_flush(coherence);
 
-			// Start accelerators
-			printf("  Start...\n");
-			iowrite32(dev, CMD_REG, CMD_MASK_START);
+			esp_monitor_args_t mon_args;
+			const int ACC_TILE_IDX = 3;
+			mon_args.read_mode = ESP_MON_READ_SINGLE;
+			mon_args.tile_index = ACC_TILE_IDX;
+			mon_args.mon_index = MON_DVFS_BASE_INDEX + 3;
+			unsigned int cycles_start, cycles_end, cycles_diff;
 
-			// Wait for completion
-			done = 0;
-			while (!done) {
-				done = ioread32(dev, STATUS_REG);
-				done &= STATUS_MASK_DONE;
+			unsigned total_time = 0;
+			unsigned N_runs = 2;
+
+			for(int k = 0; k < N_runs; k++){
+				// Start accelerators
+				printf("  Start...\n");
+
+				cycles_start = esp_monitor(mon_args, NULL);
+
+				iowrite32(dev, CMD_REG, CMD_MASK_START);
+
+				// Wait for completion
+				done = 0;
+				while (!done) {
+					done = ioread32(dev, STATUS_REG);
+					done &= STATUS_MASK_DONE;
+				}
+
+				cycles_end = esp_monitor(mon_args, NULL);
+				cycles_diff = sub_monitor_vals(cycles_start, cycles_end);
+				/* printf("Monitr time is %u %u %u \n", cycles_start, cycles_end, cycles_diff); */
+
+				unsigned nano = cycles_diff * 20; //50MHz
+				total_time += nano;
+				printf("Accelerator runtime: %u ns \n", nano);
+
+				iowrite32(dev, CMD_REG, 0x0);
+
+				printf("  Done\n");
+				printf("  validating...\n");
 			}
-			iowrite32(dev, CMD_REG, 0x0);
-
-			printf("  Done\n");
-			printf("  validating...\n");
 
 			/* Validation */
 			errors = validate_buf(&mem[out_offset], gold);
 
-			// Start accelerators
-			printf("  Start...\n");
-			iowrite32(dev, CMD_REG, CMD_MASK_START);
+			/* // Start accelerators */
+			/* printf("  Start...\n"); */
+			/* iowrite32(dev, CMD_REG, CMD_MASK_START); */
 
-			// Wait for completion
-			done = 0;
-			while (!done) {
-				done = ioread32(dev, STATUS_REG);
-				done &= STATUS_MASK_DONE;
-			}
-			iowrite32(dev, CMD_REG, 0x0);
+			/* // Wait for completion */
+			/* done = 0; */
+			/* while (!done) { */
+			/* 	done = ioread32(dev, STATUS_REG); */
+			/* 	done &= STATUS_MASK_DONE; */
+			/* } */
+			/* iowrite32(dev, CMD_REG, 0x0); */
 
-			printf("  Done\n");
-			printf("  validating...\n");
+			/* printf("  Done\n"); */
+			/* printf("  validating...\n"); */
 
-			/* Validation */
-			errors = validate_buf(&mem[out_offset], gold);
+			/* /\* Validation *\/ */
+			/* errors = validate_buf(&mem[out_offset], gold); */
 
+			total_time = total_time / N_runs;
+			printf("Average runtime: %u ns \n", total_time);
 
 			float total = 100 * (float) errors / (key_length*key_batch);
 			if (total > 1)

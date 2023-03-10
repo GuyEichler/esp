@@ -33,7 +33,7 @@ CFLAGS += -DLINUX
 CFLAGS += -I$(DRIVERS)/include -I$(DRIVERS)/../common/include -I../include -I$(DESIGN_PATH)/socgen/esp
 CFLAGS += -L$(BUILD_DRIVERS)/contig_alloc -L$(BUILD_DRIVERS)/test
 CFLAGS += -L$(BUILD_DRIVERS)/libesp -L$(BUILD_DRIVERS)/utils/linux -L$(BUILD_DRIVERS)/monitors
-LDFLAGS += -lm -lrt -lpthread -lesp -ltest -lcontig -lutils -lmonitors -lgmp
+LDFLAGS += -lm -lrt -lpthread -lesp -ltest -lcontig -lutils -lmonitors 
 
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)$(LD)

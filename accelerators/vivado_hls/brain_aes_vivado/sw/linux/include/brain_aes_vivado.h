@@ -28,6 +28,7 @@
 #endif
 
 FILE *log_file;
+FILE *log_0309;
 
 struct brain_bit_vivado_access
 {

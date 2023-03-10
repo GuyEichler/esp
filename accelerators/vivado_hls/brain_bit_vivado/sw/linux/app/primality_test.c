@@ -415,7 +415,7 @@ int main(int argc, char* argv[])
     }
     
     printf("************************************************************************************************** \n");    
-    printf("Report: %u Prime Numbers in /dev/urandom from of %u total keys gen(us) %f\n", tot_primes_urand, KEY_NUM, (total_elapsed_acc / 1e3);
+    printf("Report: %u Prime Numbers in /dev/urandom from of %u total keys gen(us) %f\n", tot_primes_urand, KEY_NUM, (total_elapsed_acc / 1e3));
     printf("*************************************************************************************************** \n");    
     
     printf("*************************************************************************************************** \n");    

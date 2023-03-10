@@ -12,7 +12,8 @@
 #include "cfg_p2p_4x4.h"
 #include "cfg_p2p_3x2.h"
 
-#include "brain_bit_input_full.h"
+// #include "brain_bit_input_full.h"
+#include "input_1mil_full.h"
 #include "aes_data.h"
 
 #include <sys/time.h>
@@ -890,7 +891,7 @@ int run_both_p2p_2x1(int N)
 
     buf_brain = (token_t *)esp_alloc(brain_size * N);
     // buf_aes = (token_t *)esp_alloc(aes_size_bytes);
-    buf_aes = (token_t *)esp_alloc(brain_size);
+    buf_aes = (token_t *)esp_alloc(brain_size*N);
     cfg_p2p_2x1[0].hw_buf = buf_brain;
     cfg_p2p_2x1[1].hw_buf = buf_brain;
     cfg_p2p_2x1[2].hw_buf = buf_aes;
@@ -902,10 +903,10 @@ int run_both_p2p_2x1(int N)
 
     memset(buf_brain, 0, brain_size * N);
     // memset(buf_aes, 0, aes_size_bytes);
-    memset(buf_aes, 0, brain_size);
+    memset(buf_aes, 0, brain_size*N);
 
     gold_brain = malloc(brain_out_size * N);
-    gold_aes = malloc(aes_out_size);
+    gold_aes = malloc(aes_out_size*N);
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
     unsigned avg_u = *avg_ptr;
@@ -1788,15 +1789,15 @@ int main(int argc, char **argv)
     // -- 2 brain 1 aes
     key_length = 256;
     input_bytes = 16;
-    wrap_2x1_avg10(5);
+    wrap_2x1_avg10(6);
 
     key_length = 512;
     input_bytes = 48;
-    wrap_2x1_avg10(4);
+    wrap_2x1_avg10(6);
 
     key_length = 1024;
     input_bytes = 112;
-    wrap_2x1_avg10(3);
+    wrap_2x1_avg10(6);
 
     // run_both_p2p_2x1(1);
     // run_both_p2p_2x1(10);

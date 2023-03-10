@@ -204,12 +204,13 @@ static void print_time_info(esp_thread_info_t *info[], unsigned long long hw_ns,
 void esp_run(esp_thread_info_t cfg[], unsigned nacc)
 {
 	int i;
+	unsigned print = 1;
 
 	if (thread_is_p2p(&cfg[0])) {
 		esp_thread_info_t *cfg_ptrs[1];
 		cfg_ptrs[0] = cfg;
 
-		esp_run_parallel(cfg_ptrs, 1, &nacc);
+		esp_run_parallel(cfg_ptrs, 1, &nacc, print);
 	} else{
 		esp_thread_info_t **cfg_ptrs = malloc(sizeof(esp_thread_info_t*) * nacc);
 		unsigned *nacc_arr = malloc(sizeof(unsigned) * nacc);
@@ -218,13 +219,37 @@ void esp_run(esp_thread_info_t cfg[], unsigned nacc)
 			nacc_arr[i] = 1;
 			cfg_ptrs[i] = &cfg[i];
 		}
-		esp_run_parallel(cfg_ptrs, nacc, nacc_arr);
+		esp_run_parallel(cfg_ptrs, nacc, nacc_arr, print);
 		free(nacc_arr);
 		free(cfg_ptrs);
 	}
 }
 
-void esp_run_parallel(esp_thread_info_t* cfg[], unsigned nthreads, unsigned* nacc)
+void esp_run_no_print(esp_thread_info_t cfg[], unsigned nacc)
+{
+	int i;
+	unsigned print = 0;
+
+	if (thread_is_p2p(&cfg[0])) {
+		esp_thread_info_t *cfg_ptrs[1];
+		cfg_ptrs[0] = cfg;
+
+		esp_run_parallel(cfg_ptrs, 1, &nacc, print);
+	} else{
+		esp_thread_info_t **cfg_ptrs = malloc(sizeof(esp_thread_info_t*) * nacc);
+		unsigned *nacc_arr = malloc(sizeof(unsigned) * nacc);
+
+		for (i = 0; i < nacc; i++) {
+			nacc_arr[i] = 1;
+			cfg_ptrs[i] = &cfg[i];
+		}
+		esp_run_parallel(cfg_ptrs, nacc, nacc_arr, print);
+		free(nacc_arr);
+		free(cfg_ptrs);
+	}
+}
+
+void esp_run_parallel(esp_thread_info_t* cfg[], unsigned nthreads, unsigned* nacc, unsigned print)
 {
 	int i, j;
 	struct timespec th_start;
@@ -289,7 +314,8 @@ void esp_run_parallel(esp_thread_info_t* cfg[], unsigned nthreads, unsigned* nac
 	}
 
 	gettime(&th_end);
-	print_time_info(cfg, ts_subtract(&th_start, &th_end), nthreads, nacc);
+	if(print == 1)
+		print_time_info(cfg, ts_subtract(&th_start, &th_end), nthreads, nacc);
 
 	free(thread);
 }

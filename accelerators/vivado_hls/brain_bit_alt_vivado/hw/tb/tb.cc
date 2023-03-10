@@ -285,8 +285,10 @@ int main(int argc, char **argv) {
                 done = true;
                 unsigned max_chunk = 1024;
                 offset = i * out_words_adj + j - (skip % key_length);
-                if(key_length > max_chunk)
+                if(key_length > max_chunk && skip > key_length)
                     offset += key_length - max_chunk;
+                else if(key_length > max_chunk && skip < key_length)
+                    offset -= key_length % max_chunk;
             }
             // else if(val_counter != val_num){
             //     unsigned index = i * out_words_adj + j - skip;

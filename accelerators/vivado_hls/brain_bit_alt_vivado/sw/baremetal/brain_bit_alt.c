@@ -33,15 +33,15 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 128;
+const int32_t key_length = 2048;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 /* const int32_t L = 1500; */
 const int32_t key_batch = 200;
-const int32_t key_num = 100;
-const int32_t val_num = 15;
+const int32_t key_num = 1;
+const int32_t val_num = 1;
 const int32_t tot_iter = 1;
 const int32_t d = 5;
 const int32_t h = 10;
@@ -132,8 +132,10 @@ static int validate_buf(token_t *out, token_t *gold)
 				done = true;
 				unsigned max_chunk = 1024;
 				offset = i * out_words_adj + j - (skip % key_length);
-				if(key_length > max_chunk)
+				if(key_length > max_chunk && skip > key_length)
 					offset += key_length - max_chunk;
+				else if(key_length > max_chunk && skip < key_length)
+					offset -= key_length % max_chunk;
 			}
 		}
 

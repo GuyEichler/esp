@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "libesp.h"
-#include "cfg.h"
 #include <stdio.h>
 #include <sys/time.h>
 #include "cfg_rand.h"
+#include "monitors.h"
 #include "input_1mil_full.h"
 
 typedef int32_t token_t;
@@ -13,9 +13,9 @@ typedef int32_t token_t;
 //#define SYS_RAND
 #define PRINT 0
 #define DEV_RAND
-#define KEY_LEN 256000
-#define KEY_BYTES 32
-#define MAX_ITER  1
+#define KEY_LEN 1024
+//#define KEY_BYTES 32
+#define MAX_ITER  100
 
 #define RAND_MODE SYS_RAND
 
@@ -28,6 +28,7 @@ struct timeval hw_begin_0, hw_end_0;
 int i, k;
 long seconds = 0, microseconds = 0;
 double elapsed = 0.0, avg_elapsed_us = 0.0, total_time = 0.0;
+double avg_elapsed_monitor_us = 0.0;
 
 //brain_bit
 static unsigned in_words_adj;
@@ -198,7 +199,8 @@ int run_dev_rand()
 	    if(PRINT)
 	        printf("%x", (unsigned int) keys[i * sizeof(token_t)]);
 
-        printf("\n");
+	if(PRINT)
+		printf("\n");
 
         seconds = hw_end_0.tv_sec - hw_begin_0.tv_sec;
         microseconds = hw_end_0.tv_usec - hw_begin_0.tv_usec;
@@ -211,7 +213,7 @@ int run_dev_rand()
     avg_elapsed_us = total_time / MAX_ITER;
 
     printf("Randomness source: /dev/random\n");
-    printf("Number of random bits: %d\n", KEY_LEN*MAX_ITER);
+    printf("Number of random bits: %d\n", KEY_LEN);
     printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us);
 
     return 0;
@@ -251,7 +253,8 @@ int run_dev_urand()
 	    if(PRINT)
 	        printf("%x", (unsigned int) keys[i * sizeof(token_t)]);
 
-        printf("\n");
+	if(PRINT)
+		printf("\n");
 
         seconds = hw_end_0.tv_sec - hw_begin_0.tv_sec;
         microseconds = hw_end_0.tv_usec - hw_begin_0.tv_usec;
@@ -264,7 +267,7 @@ int run_dev_urand()
     avg_elapsed_us = total_time / MAX_ITER;
 
     printf("Randomness source: /dev/urandom\n");
-    printf("Number of random bits: %d\n", KEY_LEN*MAX_ITER);
+    printf("Number of random bits: %d\n", KEY_LEN);
     printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us);
 
     return 0;
@@ -273,6 +276,11 @@ int run_dev_urand()
 int run_rand()
 {
    keys = malloc(key_len_bytes);
+
+   if(keys == NULL) {
+	   printf("Error allocating memory for rand() \n");
+	   return -1;
+   }
 
     for (k = 0; k < MAX_ITER; k++) {
         gettimeofday(&hw_begin_0, 0);
@@ -288,7 +296,9 @@ int run_rand()
 	    if(PRINT)
 	        printf("%x", (unsigned int) keys[i * sizeof(token_t)]);
 
-        printf("\n");
+	if(PRINT)
+		printf("\n");
+
         seconds = hw_end_0.tv_sec - hw_begin_0.tv_sec;
         microseconds = hw_end_0.tv_usec - hw_begin_0.tv_usec;
         elapsed += seconds + microseconds*1e-6;
@@ -297,7 +307,7 @@ int run_rand()
     avg_elapsed_us = (double) (elapsed * 1e6) / MAX_ITER;
 
     printf("Randomness source: rand()\n");
-    printf("Number of random bits: %d\n", KEY_LEN*MAX_ITER);
+    printf("Number of random bits: %d\n", KEY_LEN);
     printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us);
 
     free(keys);
@@ -321,6 +331,16 @@ int run_brain()
 	/* key_length = KEY_LEN; */
 	/* key_num = MAX_ITER; */
 
+        unsigned avg_u = *avg_ptr;
+        unsigned std_u = *std_ptr;
+        unsigned R_u = *R_ptr;
+
+        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->avg = avg_u;
+        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->std = std_u;
+        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->R = R_u;
+        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->key_num = MAX_ITER;
+        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->key_length = KEY_LEN;
+
 	printf("\n====== %s ======\n\n", cfg_000[0].devname);
 	/* <<--print-params-->> */
 	printf("  .avg = %f\n", avg);
@@ -332,25 +352,33 @@ int run_brain()
 	printf("  .key_num = %d\n", MAX_ITER);
 	printf("\n  ** START **\n");
 
-        unsigned avg_u = *avg_ptr;
-        unsigned std_u = *std_ptr;
-        unsigned R_u = *R_ptr;
-
-        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->avg = avg_u;
-        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->std = std_u;
-        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->R = R_u;
-        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->key_num = MAX_ITER;
-        ((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->key_length = KEY_LEN;
-
 	token_t* out_location = &buf[out_offset];
 	for(int i = 0; i < out_len; i++)
 		out_location[i] = 0;
 
+
+	esp_monitor_args_t mon_args;
+	const int ACC_TILE_IDX = 2;
+	mon_args.read_mode = ESP_MON_READ_SINGLE;
+	mon_args.tile_index = ACC_TILE_IDX;
+	mon_args.mon_index = MON_DVFS_BASE_INDEX + 3;
+	unsigned int cycles_start, cycles_end, cycles_diff;
+
+	unsigned long long total_time_monitor = 0;
 	unsigned long long total_time = 0;
+
+	cycles_start = esp_monitor(mon_args, NULL);
+
 	/* for(int k = 0; k < N_runs; k++){ */
 	esp_run_no_print(cfg_000, NACC);
+	//esp_run(cfg_000, NACC);
 	total_time = cfg_000[0].hw_ns;
 	/* } */
+
+	cycles_end = esp_monitor(mon_args, NULL);
+	cycles_diff = sub_monitor_vals(cycles_start, cycles_end);
+	unsigned nano = cycles_diff * 20; //50MHz
+	total_time_monitor = nano;
 
 	int errors = 0;
 	if(PRINT)
@@ -358,13 +386,67 @@ int run_brain()
 
 
 	avg_elapsed_us = ((double)total_time / 1e3) / MAX_ITER;
+	avg_elapsed_monitor_us = ((double)total_time_monitor / 1e3) / MAX_ITER;
 
 	printf("Randomness source: brain_bit\n");
-	printf("Number of random bits: %d\n", KEY_LEN*MAX_ITER);
+	printf("Number of random bits: %d\n", KEY_LEN);
 	printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us);
+	printf("Time measured monitors: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_monitor_us);
 
 	free(keys);
 	return errors;
+}
+
+int run_brain_sw(){
+
+
+	int i, j;
+
+	unsigned long long total_time = 0;
+
+	token_t *gold;
+
+	init_parameters();
+	gold = malloc(out_size);
+
+        gettimeofday(&hw_begin_0, 0);
+
+	int counter = 0;
+        for (i = 0; i < key_batch; i++)
+		for (j = 0; j < key_length; j++){
+			float val = val_arr[i * in_words_adj + j];
+                        bool filter = (fabs((float)val - avg) >= Rs);
+			if(!filter){
+				int32_t result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
+				result = result % 2;
+				gold[i * out_words_adj + j] = (token_t) result;
+                                //printf("Generated golden value %d\n", gold[i * out_words_adj + j]);
+				counter++;
+			}
+			else{
+				gold[i * out_words_adj + j] = 3;
+			}
+
+			if(counter == KEY_LEN*MAX_ITER){
+				gettimeofday(&hw_end_0, 0);
+				i = key_batch-1;
+				break;
+			}
+		}
+
+
+        seconds = hw_end_0.tv_sec - hw_begin_0.tv_sec;
+        microseconds = hw_end_0.tv_usec - hw_begin_0.tv_usec;
+        elapsed += seconds + microseconds * 1e-6;
+
+	total_time = (double) elapsed * 1e6;
+	avg_elapsed_us = total_time / MAX_ITER;
+
+	printf("Randomness source: brain_bit software\n");
+	printf("Number of random bits: %d\n", KEY_LEN);
+	printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us);
+
+	return(0);
 }
 
 int main(int argc, char *argv[])
@@ -384,6 +466,10 @@ int main(int argc, char *argv[])
     else if (*argv[1] == '4') {
         printf("running brain_bit \n");
         run_brain();
+    }
+    else if (*argv[1] == '5') {
+        printf("running brain_bit software\n");
+        run_brain_sw();
     }
 
     return 0;

@@ -1836,82 +1836,82 @@ int main(int argc, char **argv)
     // errors_3 = run_both_p2p_4x1(1);
 
     // -- 1 brain 1 aes
-    // key_length = 256;
-    // input_bytes = 16;
-    // wrap_1x1_avg10();
+    key_length = 256;
+    input_bytes = 16;
+    wrap_1x1_avg10();
 
-    // key_length = 512;
-    // input_bytes = 48;
-    // wrap_1x1_avg10();
+    key_length = 512;
+    input_bytes = 48;
+    wrap_1x1_avg10();
 
-    // key_length = 1024;
-    // input_bytes = 112;
-    // wrap_1x1_avg10();
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_1x1_avg10();
 
     // -- 2 brain 1 aes
-    // key_length = 256;
-    // input_bytes = 16;
-    // wrap_2x1_avg10();
+    key_length = 256;
+    input_bytes = 16;
+    wrap_2x1_avg10();
 
-    // key_length = 512;
-    // input_bytes = 48;
-    // wrap_2x1_avg10();
+    key_length = 512;
+    input_bytes = 48;
+    wrap_2x1_avg10();
 
-    // key_length = 1024;
-    // input_bytes = 112;
-    // wrap_2x1_avg10();
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_2x1_avg10();
 
     // -- 3 brain 1 aes
-    // key_length = 256;
-    // input_bytes = 16;
-    // wrap_3x1_avg10();
+    key_length = 256;
+    input_bytes = 16;
+    wrap_3x1_avg10();
 
-    // key_length = 512;
-    // input_bytes = 48;
-    // wrap_3x1_avg10();
+    key_length = 512;
+    input_bytes = 48;
+    wrap_3x1_avg10();
 
-    // key_length = 1024;
-    // input_bytes = 112;
-    // wrap_3x1_avg10();
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_3x1_avg10();
 
     // -- 4 brain 1 aes
-    // key_length = 256;
-    // input_bytes = 16;
-    // wrap_4x1_avg10();
+    key_length = 256;
+    input_bytes = 16;
+    wrap_4x1_avg10();
 
-    // key_length = 512;
-    // input_bytes = 48;
-    // wrap_4x1_avg10();
+    key_length = 512;
+    input_bytes = 48;
+    wrap_4x1_avg10();
 
-    // key_length = 1024;
-    // input_bytes = 112;
-    // wrap_4x1_avg10();
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_4x1_avg10();
 
     // -- 4 brain 4 aes
-    // key_length = 256;
-    // input_bytes = 16;
-    // wrap_4x4_avg10();
+    key_length = 256;
+    input_bytes = 16;
+    wrap_4x4_avg10();
 
-    // key_length = 512;
-    // input_bytes = 48;
-    // wrap_4x4_avg10();
+    key_length = 512;
+    input_bytes = 48;
+    wrap_4x4_avg10();
 
-    // key_length = 1024;
-    // input_bytes = 112;
-    // wrap_4x4_avg10();
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_4x4_avg10();
 
     // -- 1 brain 2 aes
-    // key_length = 256;
-    // input_bytes = 16;
-    // wrap_1x2_avg10();
+    key_length = 256;
+    input_bytes = 16;
+    wrap_1x2_avg10();
 
-    // key_length = 512;
-    // input_bytes = 48;
-    // wrap_1x2_avg10();
+    key_length = 512;
+    input_bytes = 48;
+    wrap_1x2_avg10();
 
-    // key_length = 1024;
-    // input_bytes = 112;
-    // wrap_1x2_avg10();
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_1x2_avg10();
 
     // -- 2 brain 3 aes
     key_length = 256;

@@ -47,6 +47,25 @@ struct brain_bit_vivado_access
 	unsigned dst_offset;
 };
 
+// struct brain_bit_alt_vivado_access {
+// 	struct esp_access esp;
+// 	/* <<--regs-->> */
+// 	unsigned avg;
+// 	unsigned key_length;
+// 	unsigned std;
+// 	unsigned R;
+// 	/* unsigned L; */
+// 	unsigned key_batch;
+// 	unsigned key_num;
+// 	unsigned val_num;
+// 	unsigned tot_iter;
+// 	unsigned d;
+// 	unsigned h;
+// 	unsigned src_offset;
+// 	unsigned dst_offset;
+// };
+
+
 struct aes_cxx_catapult_access
 {
 	struct esp_access esp;
@@ -64,6 +83,7 @@ struct aes_cxx_catapult_access
 };
 
 #define BRAIN_BIT_VIVADO_IOC_ACCESS _IOW('S', 0, struct brain_bit_vivado_access)
+// #define BRAIN_BIT_ALT_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct brain_bit_alt_vivado_access)
 #define AES_CXX_CATAPULT_IOC_ACCESS _IOW('S', 0, struct aes_cxx_catapult_access)
 
 typedef int32_t token_t;
@@ -81,6 +101,9 @@ typedef int32_t token_t;
 #define KEY_NUM 15
 #define VAL_NUM 1
 #define TOT_ITER 1
+// brain_bit_alt:
+// #define D 5
+// #define H 10
 // aes:
 #define OPER_MODE 1
 #define ENCRYPTION 1

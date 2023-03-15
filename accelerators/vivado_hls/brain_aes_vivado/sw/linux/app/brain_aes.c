@@ -1477,11 +1477,11 @@ int run_both_p2p_2x3(int N)
     ((struct aes_cxx_catapult_access *)cfg_p2p_2x3[4].esp_desc)->input_bytes = input_bytes;
     ((struct aes_cxx_catapult_access *)cfg_p2p_2x3[4].esp_desc)->batch = N;
 
-    print_brain_bit_config(&cfg_p2p_1x1[0]);
-    print_brain_bit_config(&cfg_p2p_1x1[1]);
-    print_aes_config(&cfg_p2p_1x1[2]);
-    print_aes_config(&cfg_p2p_1x1[3]);
-    print_aes_config(&cfg_p2p_1x1[4]);
+    print_brain_bit_config(&cfg_p2p_2x3[0]);
+    print_brain_bit_config(&cfg_p2p_2x3[1]);
+    print_aes_config(&cfg_p2p_2x3[2]);
+    print_aes_config(&cfg_p2p_2x3[3]);
+    print_aes_config(&cfg_p2p_2x3[4]);
 
     printf("\n  ** START **\n");
     esp_run(cfg_p2p_2x3, 5);

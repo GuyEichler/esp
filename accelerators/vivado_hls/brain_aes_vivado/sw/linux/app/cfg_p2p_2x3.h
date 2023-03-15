@@ -81,7 +81,7 @@ struct aes_cxx_catapult_access aes_cxx_cfg_p2p_2x3_1[] = {
 		.esp.coherence = ACC_COH_NONE,
 		.esp.p2p_store = 0,
 		.esp.p2p_nsrcs = 1,
-		.esp.p2p_srcs = {"brain_bit_vivado.0", "", "", ""},
+		.esp.p2p_srcs = {"brain_bit_vivado.1", "", "", ""},
 	}};
 
 	struct aes_cxx_catapult_access aes_cxx_cfg_p2p_2x3_2[] = {

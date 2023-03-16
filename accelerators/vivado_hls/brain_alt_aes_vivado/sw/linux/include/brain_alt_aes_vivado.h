@@ -97,8 +97,8 @@ typedef int32_t token_t;
 #define KEY_LENGTH 128
 #define STD 38.626628825256695
 #define R_val 1.5
-#define D_val 11
-#define H_val 14
+#define D_val 7
+#define H_val 12
 #define KEY_BATCH 20
 #define KEY_NUM 15
 #define VAL_NUM 1

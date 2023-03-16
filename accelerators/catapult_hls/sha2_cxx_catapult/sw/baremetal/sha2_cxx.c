@@ -17,6 +17,12 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
     return (sizeof(void *) / _st);
 }
 
+//#define MON_MEASURE_TIME 1
+
+#ifdef MON_MEASURE_TIME
+#include "monitors.h"
+#endif
+
 #define SLD_SHA2_CXX 0x088
 #define DEV_NAME "sld,sha2_cxx_catapult"
 
@@ -363,6 +369,19 @@ static int validate_buf(unsigned idx, token_t *out, token_t *gold)
 //    }
 //}
 
+static inline uint64_t get_counter() {
+        uint64_t counter;
+        asm volatile (
+                "li t0, 0;"
+                "csrr t0, mcycle;"
+                "mv %0, t0"
+                : "=r" ( counter )
+                :
+                : "t0"
+        );
+        return counter;
+}
+
 int main(int argc, char * argv[])
 {
     int i;
@@ -375,6 +394,22 @@ int main(int argc, char * argv[])
     token_t *mem;
     token_t *gold;
     unsigned errors = 0;
+
+
+#ifdef MON_MEASURE_TIME
+    //esp monitor for measuring time
+    esp_monitor_args_t mon_args, mon_args2;
+    const int CPU_TILE_IDX = 7;
+    mon_args.read_mode = ESP_MON_READ_SINGLE;
+    mon_args.tile_index = CPU_TILE_IDX;
+    mon_args.mon_index = 16;
+    
+    mon_args2.read_mode = ESP_MON_READ_SINGLE;
+    mon_args2.tile_index = CPU_TILE_IDX;
+    mon_args2.mon_index = 17;
+    unsigned int cycles_start, cycles_end, cycles_diff;
+    unsigned int cycles_start_2, cycles_end_2, cycles_diff_2;
+#endif
 
     // Search for the device
     printf("INFO: Scanning device tree... \n");
@@ -454,6 +489,8 @@ int main(int argc, char * argv[])
             // Use the following if input and output data are not allocated at the default offsets
             //iowrite32(dev, SRC_OFFSET_REG, 0x0);
             //iowrite32(dev, DST_OFFSET_REG, 0x0);
+	
+	    //start timer
 
             // Pass accelerator-specific configuration parameters
             /* <<--regs-config-->> */
@@ -465,6 +502,13 @@ int main(int argc, char * argv[])
 
             // Start accelerators
             printf("INFO: Accelerator start...\n");
+	    //start timer
+#ifdef MON_MEASURE_TIME
+            cycles_start = esp_monitor(mon_args, NULL);
+            cycles_start_2= esp_monitor(mon_args2, NULL);
+#else
+            uint64_t begin = get_counter();
+#endif
 
             iowrite32(dev, CMD_REG, CMD_MASK_START);
 
@@ -475,6 +519,17 @@ int main(int argc, char * argv[])
                 done &= STATUS_MASK_DONE;
             }
             iowrite32(dev, CMD_REG, 0x0);
+            //end timer
+#ifdef MON_MEASURE_TIME
+            cycles_end = esp_monitor(mon_args, NULL);
+            cycles_end_2 = esp_monitor(mon_args2, NULL);
+            cycles_diff = sub_monitor_vals(cycles_start, cycles_end);
+            cycles_diff_2 = sub_monitor_vals(cycles_start_2, cycles_end_2);
+            printf("[Monitor Timer]: AES baremetal execution time %u %u %u %u %u \n", cycles_start, cycles_end, cycles_diff, cycles_diff_2, cycles_diff * 13 );
+#else                 
+            uint64_t end = get_counter();
+            printf("INFO: AES baremetal execution time %lu %lu clk cycles \n",  end - begin, (end - begin) * 13);
+#endif
 
             printf("INFO: Accelerator done\n");
             printf("INFO: Validating...\n");

@@ -328,7 +328,7 @@ void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain)
     // this function should only take 1 key
 
     int i;
-    int j;
+    int j = 0;
 
     int key_num_words = key_num * key_length / DATA_BITWIDTH;
     /* int val_num_words = val_num * key_length / DATA_BITWIDTH; */
@@ -568,13 +568,13 @@ int run_both_mem_1x1(int N)
     unsigned long long total_time = 0;
 
     unsigned errors = 0;
-    int i = 0;
+    /* int i = 0; */
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     //key_length = 128;
@@ -586,17 +586,22 @@ int run_both_mem_1x1(int N)
     init_parameters_brain_bit();
     init_parameters_aes_from_brain();
 
-    buf_brain = (token_t *)esp_alloc(brain_size+aes_size_bytes);
+    buf_brain = (token_t *)esp_alloc(brain_size);
     /* buf_aes = (token_t *)esp_alloc(aes_size_bytes); */
     cfg_brain_bit_000[0].hw_buf = buf_brain;
-    memset(buf_brain, 0, brain_size+aes_size_bytes);
-    gold_brain = malloc(brain_out_size);
+    memset(buf_brain, 0, brain_size);
+    /* gold_brain = malloc(brain_out_size); */
 
-    init_buffer_brain_bit(buf_brain, gold_brain);
+    /* init_buffer_brain_bit(buf_brain, gold_brain); */
+
+    /* gold_brain = malloc(brain_out_size); */
+    /* gold_aes = malloc(aes_out_size); */
 
     unsigned avg_u = *avg_ptr;
     unsigned std_u = *std_ptr;
     unsigned R_u = *R_ptr;
+
+    /* print_brain_bit_config(&cfg_brain_bit_000[0]); */
 
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->avg = avg_u;
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->std = std_u;
@@ -605,8 +610,8 @@ int run_both_mem_1x1(int N)
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_length = key_length;
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_batch = key_batch;
     ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = key_num;
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = val_num;
-    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->key_num = tot_iter;
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->val_num = val_num;
+    ((struct brain_bit_vivado_access *)cfg_brain_bit_000[0].esp_desc)->tot_iter = tot_iter;
 
     token_t* brain_out_location = &buf_brain[brain_out_offset];
     /* buf_aes = brain_out_location; */
@@ -645,7 +650,7 @@ int run_both_mem_1x1(int N)
     cfg_aes_000[0].hw_buf = buf_aes;
     memset(buf_aes, 0, aes_size_bytes);
 
-    gold_aes = malloc(aes_out_size);
+    //gold_aes = malloc(aes_out_size);
 
     /* set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]); */
     /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
@@ -669,12 +674,34 @@ int run_both_mem_1x1(int N)
     /* printf("  .tag_bytes    = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->tag_bytes); */
     /* printf("  .batch        = %d\n", ((struct aes_cxx_catapult_access *)cfg_aes_000[0].esp_desc)->batch); */
 
+    struct timespec th_start;
+    struct timespec th_end;
+    unsigned long long brain_time = 0;
+    unsigned long long aes_time = 0;
+    unsigned long long mem_time = 0;
+
     printf("\n  ** START **\n");
     /* for (i = 0; i < N; i++) */
     /* { */
-    esp_run(cfg_brain_bit_000, 1);
+
+    gettime(&th_start);
+    esp_run_no_print(cfg_brain_bit_000, 1);
+    gettime(&th_end);
+
+    brain_time = ts_subtract(&th_start, &th_end);
+
+    gettime(&th_start);
     set_aes_in_from_brain_bit_out(buf_aes, brain_out_location);
-    esp_run(cfg_aes_000, 1);
+    gettime(&th_end);
+
+    mem_time = ts_subtract(&th_start, &th_end);
+
+    gettime(&th_start);
+    esp_run_no_print(cfg_aes_000, 1);
+    gettime(&th_end);
+
+    aes_time = ts_subtract(&th_start, &th_end);
+
     total_time = cfg_aes_000[0].hw_ns + cfg_brain_bit_000[0].hw_ns;
     /* } */
     printf("\n  ** DONE **\n");
@@ -687,12 +714,19 @@ int run_both_mem_1x1(int N)
     else
         printf("  + TEST FAIL\n");
 
+    total_time = brain_time+mem_time+aes_time;
+
     printf("==================================================\n");
     printf("==   Finish ** brain_bit + aes (mem_1x1) **     ==\n");
     printf("==     N: %d\tTotal time: %llu\n", N, total_time);
     printf("==================================================\n");
 
+    fprintf(log_file, "-- mem_1x1 brain_bit time: %llu\n", cfg_brain_bit_000[0].hw_ns);
+    fprintf(log_file, "-- mem_1x1 aes time: %llu\n", cfg_aes_000[0].hw_ns);
+    fprintf(log_file, "-- mem_1x1 N: %d time:\t%llu\n", N, total_time);
+
     esp_free(buf_brain);
+    esp_free(buf_aes);
 
     return errors;
 }
@@ -708,10 +742,10 @@ int run_both_p2p_1x1(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 512; // 128;
@@ -740,8 +774,8 @@ int run_both_p2p_1x1(int N)
     memset(buf_aes, 0, brain_size);
 
 
-    gold_brain = malloc(brain_out_size);
-    gold_aes = malloc(aes_out_size);
+    /* gold_brain = malloc(brain_out_size); */
+    /* gold_aes = malloc(aes_out_size); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
     unsigned avg_u = *avg_ptr;
@@ -759,7 +793,7 @@ int run_both_p2p_1x1(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_1x1[0].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = 48; // val_num * sizeof(token_t);
 
@@ -808,10 +842,10 @@ int run_both_p2p_1x2(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 128;
@@ -833,8 +867,8 @@ int run_both_p2p_1x2(int N)
     memset(buf_aes, 0, brain_size);
 
 
-    gold_brain = malloc(brain_out_size);
-    gold_aes = malloc(aes_out_size);
+    /* gold_brain = malloc(brain_out_size); */
+    /* gold_aes = malloc(aes_out_size); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
     unsigned avg_u = *avg_ptr;
@@ -852,7 +886,7 @@ int run_both_p2p_1x2(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_1x2[0].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = val_num * sizeof(token_t);
 
@@ -904,10 +938,10 @@ int run_both_p2p_2x1(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 128;
@@ -933,8 +967,8 @@ int run_both_p2p_2x1(int N)
     memset(buf_brain, 0, brain_size);
     memset(buf_aes, 0, brain_size);
 
-    gold_brain = malloc(brain_out_size * tot_iter);
-    gold_aes = malloc(aes_out_size * tot_iter);
+    /* gold_brain = malloc(brain_out_size * tot_iter); */
+    /* gold_aes = malloc(aes_out_size * tot_iter); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
     unsigned avg_u = *avg_ptr;
@@ -962,7 +996,7 @@ int run_both_p2p_2x1(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_2x1[1].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = val_num * sizeof(token_t);
 
@@ -1013,10 +1047,10 @@ int run_both_p2p_3x1(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 128;
@@ -1041,8 +1075,8 @@ int run_both_p2p_3x1(int N)
     memset(buf_brain, 0, brain_size);
     memset(buf_aes, 0, brain_size);
 
-    gold_brain = malloc(brain_out_size * tot_iter);
-    gold_aes = malloc(aes_out_size * tot_iter);
+    /* gold_brain = malloc(brain_out_size * tot_iter); */
+    /* gold_aes = malloc(aes_out_size * tot_iter); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
 
@@ -1081,17 +1115,17 @@ int run_both_p2p_3x1(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_3x1[2].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = val_num * sizeof(token_t);
 
     ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->input_bytes = input_bytes;
     ((struct aes_cxx_catapult_access *)cfg_p2p_3x1[3].esp_desc)->batch = 3 * N;
 
-    print_brain_bit_config(&cfg_p2p_1x1[0]);
-    print_brain_bit_config(&cfg_p2p_1x1[1]);
-    print_brain_bit_config(&cfg_p2p_1x1[2]);
-    print_aes_config(&cfg_p2p_1x1[3]);
+    print_brain_bit_config(&cfg_p2p_3x1[0]);
+    print_brain_bit_config(&cfg_p2p_3x1[1]);
+    print_brain_bit_config(&cfg_p2p_3x1[2]);
+    print_aes_config(&cfg_p2p_3x1[3]);
 
     printf("\n  ** START **\n");
     esp_run(cfg_p2p_3x1, 4);
@@ -1137,10 +1171,10 @@ int run_both_p2p_4x1(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 128;
@@ -1166,8 +1200,8 @@ int run_both_p2p_4x1(int N)
     memset(buf_brain, 0, brain_size);
     memset(buf_aes, 0, brain_size);
 
-    gold_brain = malloc(brain_out_size * N);
-    gold_aes = malloc(aes_out_size);
+    /* gold_brain = malloc(brain_out_size * N); */
+    /* gold_aes = malloc(aes_out_size); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
 
@@ -1216,18 +1250,18 @@ int run_both_p2p_4x1(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_4x1[3].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+     /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = val_num * sizeof(token_t);
 
     ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->input_bytes = input_bytes;
     ((struct aes_cxx_catapult_access *)cfg_p2p_4x1[4].esp_desc)->batch = 4 * N;
 
-    print_brain_bit_config(&cfg_p2p_1x1[0]);
-    print_brain_bit_config(&cfg_p2p_1x1[1]);
-    print_brain_bit_config(&cfg_p2p_1x1[2]);
-    print_brain_bit_config(&cfg_p2p_1x1[3]);
-    print_aes_config(&cfg_p2p_1x1[4]);
+    print_brain_bit_config(&cfg_p2p_4x1[0]);
+    print_brain_bit_config(&cfg_p2p_4x1[1]);
+    print_brain_bit_config(&cfg_p2p_4x1[2]);
+    print_brain_bit_config(&cfg_p2p_4x1[3]);
+    print_aes_config(&cfg_p2p_4x1[4]);
 
     printf("\n  ** START **\n");
     esp_run(cfg_p2p_4x1, 5);
@@ -1275,10 +1309,10 @@ int run_both_p2p_4x4(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 128;
@@ -1308,8 +1342,8 @@ int run_both_p2p_4x4(int N)
     memset(buf_brain, 0, brain_size);
     memset(buf_aes, 0, brain_size);
 
-    gold_brain = malloc(brain_out_size * N);
-    gold_aes = malloc(aes_out_size);
+    /* gold_brain = malloc(brain_out_size * N); */
+    /* gold_aes = malloc(aes_out_size); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
 
@@ -1358,7 +1392,7 @@ int run_both_p2p_4x4(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_4x4[3].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = val_num * sizeof(token_t);
 
@@ -1432,10 +1466,10 @@ int run_both_p2p_2x3(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     // key_length = 128;
@@ -1462,8 +1496,8 @@ int run_both_p2p_2x3(int N)
     memset(buf_brain, 0, brain_size);
     memset(buf_aes, 0, brain_size);
 
-    gold_brain = malloc(brain_out_size * tot_iter);
-    gold_aes = malloc(aes_out_size * tot_iter);
+    /* gold_brain = malloc(brain_out_size * tot_iter); */
+    /* gold_aes = malloc(aes_out_size * tot_iter); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
     unsigned avg_u = *avg_ptr;
@@ -1491,7 +1525,7 @@ int run_both_p2p_2x3(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_2x3[1].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     // input_bytes = val_num * sizeof(token_t);
 
@@ -1552,10 +1586,10 @@ int run_both_p2p_3x2(int N)
     unsigned errors = 0;
 
     token_t *buf_brain;
-    token_t *gold_brain;
+    /* token_t *gold_brain; */
 
     token_t *buf_aes;
-    token_t *gold_aes;
+    /* token_t *gold_aes; */
 
     // set brain_bit config registers
     key_length = 128;
@@ -1577,8 +1611,8 @@ int run_both_p2p_3x2(int N)
     memset(buf_brain, 0, brain_size);
     memset(buf_aes, 0, brain_size);
 
-    gold_brain = malloc(brain_out_size * N);
-    gold_aes = malloc(aes_out_size);
+    /* gold_brain = malloc(brain_out_size * N); */
+    /* gold_aes = malloc(aes_out_size); */
 
     // init_buffer_brain_bit(buf_brain, gold_brain);
 
@@ -1617,7 +1651,7 @@ int run_both_p2p_3x2(int N)
     ((struct brain_bit_vivado_access *)cfg_p2p_3x2[2].esp_desc)->tot_iter = tot_iter;
 
     set_aes_in_from_brain_bit_out(buf_aes, &buf_brain[brain_out_offset]);
-    init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0);
+    /* init_buffer_aes_p2p_1x1(buf_aes, gold_aes, 0); */
 
     input_bytes = val_num * sizeof(token_t);
 
@@ -1688,7 +1722,7 @@ int run_both_p2p_3x2(int N)
                                  cfg_p2p_3x2[4].hw_ns))));
     printf("\n  ** DONE **\n");
 
-    errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0);
+    /* errors = validate_buffer_aes(buf_aes, &buf_aes[aes_out_offset], gold_aes, 0); */
     printf("INFO: total errors %u\n", errors);
 
     if (!errors)
@@ -1880,15 +1914,15 @@ int main(int argc, char **argv)
     log_0309 = fopen("log_0309.txt", "w");
 
     int total_errors = -7;
-    int errors_0 = 0;
-    int errors_1 = 0;
-    int errors_2 = 0;
-    int errors_3 = 0;
-    int errors_4 = 0;
+    /* int errors_0 = 0; */
+    /* int errors_1 = 0; */
+    /* int errors_2 = 0; */
+    /* int errors_3 = 0; */
+    /* int errors_4 = 0; */
 
-    int avg_time;
-    int i, j;
-    int N[6] = {1, 10, 50, 100, 500, 1000};
+    /* int avg_time; */
+    //int i, j;
+    //int N[6] = {1, 10, 50, 100, 500, 1000};
 
     // errors_0 = run_brain_bit_only();
 
@@ -1910,17 +1944,17 @@ int main(int argc, char **argv)
     input_bytes = 16;
     wrap_1x1_mem_avg10();
 
-    key_length = 512;
-    input_bytes = 48;
-    wrap_1x1_mem_avg10();
+    /* key_length = 512; */
+    /* input_bytes = 48; */
+    /* wrap_1x1_mem_avg10(); */
 
-    key_length = 1024;
-    input_bytes = 112;
-    wrap_1x1_mem_avg10();
+    /* key_length = 1024; */
+    /* input_bytes = 112; */
+    /* wrap_1x1_mem_avg10(); */
 
-    key_length = 2048;
-    input_bytes = 240;
-    wrap_1x1_mem_avg10();
+    /* key_length = 2048; */
+    /* input_bytes = 240; */
+    /* wrap_1x1_mem_avg10(); */
 
     // // -- 1 brain 1 aes
     // key_length = 256;

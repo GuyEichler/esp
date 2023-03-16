@@ -200,7 +200,7 @@ int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigned indx)
 
 
 // for run both mem 1x1
-void init_parameters_aes_from_brain(int val_n);
+void init_parameters_aes_from_brain();
 void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain);
 // void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx);
 

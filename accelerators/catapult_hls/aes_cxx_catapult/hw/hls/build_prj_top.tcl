@@ -9,7 +9,7 @@ array set opt {
     # The 'debug' flag stops Catapult HLS before the architect step.
     csim       1
     hsynth     1
-    rtlsim     0
+    rtlsim     1
     lsynth     0
     debug      0
 }

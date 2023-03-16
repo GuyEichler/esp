@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sld>
-  <accelerator name="brain_bit" desc="Accelerator BRAIN_BIT" data_size="4" device_id="1e4" hls_tool="vivado_hls">
+  <accelerator name="brain_bit" desc="Accelerator BRAIN_BIT" data_size="128" device_id="1e4" hls_tool="vivado_hls">
     <param name="key_batch" desc="key_batch" />
     <param name="L" desc="L" />
     <param name="R" desc="R" />

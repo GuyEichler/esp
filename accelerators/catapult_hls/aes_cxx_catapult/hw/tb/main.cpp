@@ -133,7 +133,7 @@ CCS_MAIN(int argc, char **argv) {
         // Pass configuration to the accelerator
         conf_info.write(conf_info_data);
 
-        //Uncomment if want batching
+        //Uncomment if want batching - notice that you can't change conf between batches
     // for (/*unsigned idx = 0*/; idx < batch; idx++) {
 
         // DMA word

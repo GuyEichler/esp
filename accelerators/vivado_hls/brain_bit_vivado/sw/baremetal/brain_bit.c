@@ -11,9 +11,11 @@
 #include <fixed_point.h>
 #include <math.h>
 #include <stdbool.h>
+#include "monitors.h"
 
 //#include "input.h"
 #include "input_full.h"
+//#include "input_10mil_full.h"
 #define DATA_BITWIDTH 32
 
 typedef int32_t token_t;
@@ -31,15 +33,15 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 32;
+const int32_t key_length = 2048;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
-const int32_t key_batch = 2;
+const int32_t key_batch = 200;
 const int32_t key_num = 1;
-const int32_t val_num = 1;
+const int32_t val_num = 15;
 const int32_t tot_iter = 1;
 const float Rs = R * std;
 
@@ -113,7 +115,7 @@ static int validate_buf(token_t *out, token_t *gold)
 					skip += 1;
 				}
 
-				if((index - skip + 1) % key_length == 0 && index != 0){
+				if((index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
 					key_counter++;
 					printf("\n----------KEY %d DONE----------\n", key_counter);
 					printf("\nKEY IS: [ ");
@@ -124,7 +126,12 @@ static int validate_buf(token_t *out, token_t *gold)
 			}
 			else if(!done){
 				done = true;
-				offset = i * out_words_adj + j - skip;
+				unsigned max_chunk = 1024;
+				offset = i * out_words_adj + j - (skip % key_length);
+				if(key_length > max_chunk && skip > key_length)
+					offset += key_length - max_chunk;
+				else if(key_length > max_chunk && skip < key_length)
+					offset -= key_length % max_chunk;
 			}
 		}
 
@@ -293,42 +300,68 @@ int main(int argc, char * argv[])
 			// Flush (customize coherence model here)
 			esp_flush(coherence);
 
-			// Start accelerators
-			printf("  Start...\n");
-			iowrite32(dev, CMD_REG, CMD_MASK_START);
+			esp_monitor_args_t mon_args;
+			const int ACC_TILE_IDX = 2;
+			mon_args.read_mode = ESP_MON_READ_SINGLE;
+			mon_args.tile_index = ACC_TILE_IDX;
+			mon_args.mon_index = MON_DVFS_BASE_INDEX + 3;
+			unsigned int cycles_start, cycles_end, cycles_diff;
 
-			// Wait for completion
-			done = 0;
-			while (!done) {
-				done = ioread32(dev, STATUS_REG);
-				done &= STATUS_MASK_DONE;
+			unsigned total_time = 0;
+			unsigned N_runs = 2;
+
+			for(int k = 0; k < N_runs; k++){
+				// Start accelerators
+				printf("  Start...\n");
+
+				cycles_start = esp_monitor(mon_args, NULL);
+
+				iowrite32(dev, CMD_REG, CMD_MASK_START);
+
+				// Wait for completion
+				done = 0;
+				while (!done) {
+					done = ioread32(dev, STATUS_REG);
+					done &= STATUS_MASK_DONE;
+				}
+
+				cycles_end = esp_monitor(mon_args, NULL);
+				cycles_diff = sub_monitor_vals(cycles_start, cycles_end);
+				/* printf("Monitr time is %u %u %u \n", cycles_start, cycles_end, cycles_diff); */
+
+				unsigned nano = cycles_diff * 20; //50MHz
+				total_time += nano;
+				printf("Accelerator runtime: %u ns \n", nano);
+
+				iowrite32(dev, CMD_REG, 0x0);
+
+				printf("  Done\n");
+				printf("  validating...\n");
 			}
-			iowrite32(dev, CMD_REG, 0x0);
-
-			printf("  Done\n");
-			printf("  validating...\n");
 
 			/* Validation */
 			errors = validate_buf(&mem[out_offset], gold);
 
-			// Start accelerators
-			printf("  Start...\n");
-			iowrite32(dev, CMD_REG, CMD_MASK_START);
+			/* // Start accelerators */
+			/* printf("  Start...\n"); */
+			/* iowrite32(dev, CMD_REG, CMD_MASK_START); */
 
-			// Wait for completion
-			done = 0;
-			while (!done) {
-				done = ioread32(dev, STATUS_REG);
-				done &= STATUS_MASK_DONE;
-			}
-			iowrite32(dev, CMD_REG, 0x0);
+			/* // Wait for completion */
+			/* done = 0; */
+			/* while (!done) { */
+			/* 	done = ioread32(dev, STATUS_REG); */
+			/* 	done &= STATUS_MASK_DONE; */
+			/* } */
+			/* iowrite32(dev, CMD_REG, 0x0); */
 
-			printf("  Done\n");
-			printf("  validating...\n");
+			/* printf("  Done\n"); */
+			/* printf("  validating...\n"); */
 
-			/* Validation */
-			errors = validate_buf(&mem[out_offset], gold);
+			/* /\* Validation *\/ */
+			/* errors = validate_buf(&mem[out_offset], gold); */
 
+			total_time = total_time / N_runs;
+			printf("Average runtime: %u ns \n", total_time);
 
 			float total = 100 * (float) errors / (key_length*key_batch);
 			if (total > 1)

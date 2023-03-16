@@ -22,12 +22,19 @@ void load(word_t _inbuff[SIZE_IN_CHUNK_DATA], dma_word_t *in1,
 {
 load_data:
 
-    const unsigned length = round_up(key_length, VALUES_PER_WORD);
+    unsigned length = 0; //round_up(key_length, VALUES_PER_WORD);
+
+    if(key_length > SIZE_IN_CHUNK_DATA)
+        length = round_up(SIZE_IN_CHUNK_DATA, VALUES_PER_WORD);
+    else
+        length = round_up(key_length, VALUES_PER_WORD);
+
     const unsigned index = length * batch;
     const unsigned val_length = round_up(val_num, VALUES_PER_WORD);
+    // const unsigned val_index = index;//(key_length % SIZE_IN_CHUNK_DATA == 0) ? index : round_up(key_length, VALUES_PER_WORD) * batch;
 
     unsigned dma_length = is_keys ? length / VALUES_PER_WORD : val_length / VALUES_PER_WORD;
-    unsigned dma_index = index / VALUES_PER_WORD;
+    unsigned dma_index = index / VALUES_PER_WORD;//is_keys ? index / VALUES_PER_WORD : val_index / VALUES_PER_WORD;
 
     if(load_values){
 
@@ -52,6 +59,15 @@ load_data:
 
         load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
                 _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
+
+#ifndef __SYNTHESIS__
+                if(is_keys == 0)
+                    std::cout << "LOAD : Received "
+                              << _inbuff[i * VALUES_PER_WORD + j]
+                              << " in memory "
+                              << in1[dma_index + i].word[j] << std::endl;
+#endif
+
             }
         }
     }
@@ -171,19 +187,25 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     std::cout << "COMPUTE : Input offset is " << input_offset << std::endl;
 #endif
 
-COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
+    unsigned limit = in_length < SIZE_IN_CHUNK_DATA ? in_length : SIZE_IN_CHUNK_DATA;
+
+COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
 
 #pragma HLS loop_tripcount max=1024
 
         word_t val = _inbuff[i];
+        word_t val_avg = val - avg;
         bool filter;// = (fabs(val - avg) >= Rs);
 
 #ifndef __SYNTHESIS__
-        filter = (fabs((float)val - (float)avg) >= (float)Rs);
+        // filter = (fabs((float)val - (float)avg) >= (float)Rs);
+        float val_avg_f = (float)val - (float)avg;
+        filter = ((val_avg_f - (float)Rs) >= 0) || ((val_avg_f + (float)Rs) <= 0);
 #endif
 
 #ifdef __SYNTHESIS__
-        filter = (fabs(val - avg) >= Rs);
+        // filter = (fabs(val_avg) >= Rs);
+        filter = ((val_avg - Rs) >= 0) || ((val_avg + Rs) <= 0);
 #endif
 
         if(!filter){
@@ -192,7 +214,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
             // std::cout << "Output idx " << output_idx << " input idx " << i << " result " << result % 2 << std::endl;
 #endif
 #ifdef __SYNTHESIS__
-            result = floor(((val - (avg - Rs)) / (2*Rs)) * L);
+            result = floor(((val_avg + Rs) / (2*Rs)) * L);
 #endif
 
             result_b = result % 2;
@@ -224,7 +246,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
         if(output_idx == in_length){
 
 #ifndef __SYNTHESIS__
-            std::cout << "COMPUTE : Output idx equals in_length " << std::endl;
+            std::cout << "COMPUTE : Output idx equals in_length " << output_idx << std::endl;
 #endif
 
             is_output_ready = true;
@@ -235,7 +257,8 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
         }
 
         if(is_output_ready){
-            if(i != in_length - 1){
+            //if(i != in_length - 1){
+            if(i != limit - 1){
                 input_offset = i+1;
 
 #ifndef __SYNTHESIS__
@@ -256,7 +279,8 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < in_length; i++){
         }
     }
 
-    if(i == in_length){
+    //if(i == in_length){
+    if(i == limit){
         load_values = true;
         input_offset = 0;
 
@@ -439,6 +463,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 #ifndef __SYNTHESIS__
                 if(keys_done == key_num){
                     std::cout << "TOP : Enough keys were generated " << std::endl;
+                    std::cout << "TOP : Value of b is " << b << std::endl;
                 }
 #endif
 

@@ -17,6 +17,8 @@
 #include <esp.h>
 #include <esp_accelerator.h>
 
+#include <stdio.h>
+
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -24,6 +26,9 @@
 #ifndef min
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
 #endif
+
+FILE *log_file;
+FILE *log_0309;
 
 struct brain_bit_vivado_access
 {
@@ -42,6 +47,25 @@ struct brain_bit_vivado_access
 	unsigned dst_offset;
 };
 
+// struct brain_bit_alt_vivado_access {
+// 	struct esp_access esp;
+// 	/* <<--regs-->> */
+// 	unsigned avg;
+// 	unsigned key_length;
+// 	unsigned std;
+// 	unsigned R;
+// 	/* unsigned L; */
+// 	unsigned key_batch;
+// 	unsigned key_num;
+// 	unsigned val_num;
+// 	unsigned tot_iter;
+// 	unsigned d;
+// 	unsigned h;
+// 	unsigned src_offset;
+// 	unsigned dst_offset;
+// };
+
+
 struct aes_cxx_catapult_access
 {
 	struct esp_access esp;
@@ -59,6 +83,7 @@ struct aes_cxx_catapult_access
 };
 
 #define BRAIN_BIT_VIVADO_IOC_ACCESS _IOW('S', 0, struct brain_bit_vivado_access)
+// #define BRAIN_BIT_ALT_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct brain_bit_alt_vivado_access)
 #define AES_CXX_CATAPULT_IOC_ACCESS _IOW('S', 0, struct aes_cxx_catapult_access)
 
 typedef int32_t token_t;
@@ -76,6 +101,9 @@ typedef int32_t token_t;
 #define KEY_NUM 15
 #define VAL_NUM 1
 #define TOT_ITER 1
+// brain_bit_alt:
+// #define D 5
+// #define H 10
 // aes:
 #define OPER_MODE 1
 #define ENCRYPTION 1
@@ -172,7 +200,7 @@ int validate_buffer_aes(token_t *in, token_t *out, token_t *gold, unsigned indx)
 
 
 // for run both mem 1x1
-void init_parameters_aes_from_brain(int val_n);
+void init_parameters_aes_from_brain();
 void set_aes_in_from_brain_bit_out(token_t *in_aes, token_t *out_brain);
 // void init_buffer_aes_from_brain(token_t *in, token_t *aes_key, token_t *aes_val, token_t *out, unsigned indx);
 

@@ -15,7 +15,7 @@ typedef int32_t token_t;
 #define STD 38.626628825256695
 #define R_val 1.5
 #define L_val 1500
-#define KEY_BATCH 1500
+#define KEY_BATCH 1100
 #define KEY_NUM 1000
 #define VAL_NUM 0
 #define TOT_ITER 1
@@ -23,7 +23,7 @@ typedef int32_t token_t;
 /* <<--params-->> */
 const float avg = AVG;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = KEY_LENGTH;
+int32_t key_length = KEY_LENGTH;
 const float std = STD;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = R_val;

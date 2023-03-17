@@ -13,7 +13,7 @@ typedef int32_t token_t;
 //#define SYS_RAND
 #define PRINT 0
 #define DEV_RAND
-#define KEY_LEN 1024
+#define KEY_LEN 8192
 //#define KEY_BYTES 32
 #define MAX_ITER  100
 
@@ -357,17 +357,23 @@ int run_brain()
 		out_location[i] = 0;
 
 
-	esp_monitor_args_t mon_args;
-	const int ACC_TILE_IDX = 2;
-	mon_args.read_mode = ESP_MON_READ_SINGLE;
-	mon_args.tile_index = ACC_TILE_IDX;
-	mon_args.mon_index = MON_DVFS_BASE_INDEX + 3;
-	unsigned int cycles_start, cycles_end, cycles_diff;
+	esp_monitor_args_t mon_args_lsb, mon_args_msb;
+	const int ACC_TILE_IDX = 6;
+	mon_args_lsb.read_mode = ESP_MON_READ_SINGLE;
+	mon_args_lsb.tile_index = ACC_TILE_IDX;
+	mon_args_lsb.mon_index = 16;//MON_DVFS_BASE_INDEX + 3;
+	mon_args_msb.read_mode = ESP_MON_READ_SINGLE;
+	mon_args_msb.tile_index = ACC_TILE_IDX;
+	mon_args_msb.mon_index = 17;//MON_DVFS_BASE_INDEX + 3;
+	unsigned long int cycles_start_l, cycles_end_l, cycles_diff_l;
+	unsigned long int cycles_start_m, cycles_end_m, cycles_diff_m;
 
 	unsigned long long total_time_monitor = 0;
 	unsigned long long total_time = 0;
 
-	cycles_start = esp_monitor(mon_args, NULL);
+	unsigned long long tmp = 0;
+	cycles_start_l = esp_monitor(mon_args_lsb, NULL);
+	cycles_start_m = esp_monitor(mon_args_msb, NULL);
 
 	/* for(int k = 0; k < N_runs; k++){ */
 	esp_run_no_print(cfg_000, NACC);
@@ -375,10 +381,18 @@ int run_brain()
 	total_time = cfg_000[0].hw_ns;
 	/* } */
 
-	cycles_end = esp_monitor(mon_args, NULL);
-	cycles_diff = sub_monitor_vals(cycles_start, cycles_end);
-	unsigned nano = cycles_diff * 20; //50MHz
-	total_time_monitor = nano;
+	cycles_end_l = esp_monitor(mon_args_lsb, NULL);
+	cycles_diff_l = sub_monitor_vals(cycles_start_l, cycles_end_l);
+	cycles_end_m = esp_monitor(mon_args_msb, NULL);
+	cycles_diff_m = sub_monitor_vals(cycles_start_m, cycles_end_m);
+
+	/* printf("Accelerator runtime: %u cycles LSB\n", cycles_diff_l); */
+	/* printf("Accelerator runtime: %u cycles MSB\n", cycles_diff_m); */
+	tmp = (cycles_diff_m << 32) + cycles_diff_l;
+
+	total_time_monitor = tmp * 12.8; //78MHz
+	/* unsigned nano = cycles_diff * 20; //50MHz */
+	/* total_time_monitor = nano; */
 
 	int errors = 0;
 	if(PRINT)
@@ -411,9 +425,9 @@ int run_brain_sw(){
 
         gettimeofday(&hw_begin_0, 0);
 
-	int counter = 0;
+	unsigned counter = 0;
         for (i = 0; i < key_batch; i++)
-		for (j = 0; j < key_length; j++){
+		for (j = 0; j < KEY_LEN; j++){
 			float val = val_arr[i * in_words_adj + j];
                         bool filter = (fabs((float)val - avg) >= Rs);
 			if(!filter){
@@ -440,12 +454,13 @@ int run_brain_sw(){
         elapsed += seconds + microseconds * 1e-6;
 
 	total_time = (double) elapsed * 1e6;
-	avg_elapsed_us = total_time / MAX_ITER;
+	avg_elapsed_us = (double) total_time / MAX_ITER;
 
 	printf("Randomness source: brain_bit software\n");
-	printf("Number of random bits: %d\n", KEY_LEN);
+	printf("Number of random bits: %d, counter: %d\n", KEY_LEN, counter);
 	printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us);
 
+	free(gold);
 	return(0);
 }
 

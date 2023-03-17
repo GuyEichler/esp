@@ -11,13 +11,13 @@ typedef int32_t token_t;
 
 /* <<--params-def-->> */
 #define AVG 3.0677295382679177
-#define KEY_LENGTH 128
+#define KEY_LENGTH 1024
 #define STD 38.626628825256695
 #define R_val 1.5
 #define L_val 1500
-#define KEY_BATCH 20
-#define KEY_NUM 15
-#define VAL_NUM 2
+#define KEY_BATCH 200
+#define KEY_NUM 1
+#define VAL_NUM 0
 #define TOT_ITER 1
 
 /* <<--params-->> */

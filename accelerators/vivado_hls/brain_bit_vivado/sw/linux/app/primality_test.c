@@ -35,11 +35,12 @@ unsigned long long elapsed_bb_ns = 0;
 long seconds = 0, microseconds = 0;
 double elapsed = 0.0;
 double total_elapsed_urand = 0.0;
+double total_elapsed_rand = 0.0;
 double total_elapsed_prime = 0.0;
 double total_elapsed = 0.0;
 
-const unsigned key_len_bytes = (KEY_LENGTH / 8 );
-const unsigned num_rand_words = KEY_LENGTH / DATA_BITWIDTH;
+unsigned key_len_bytes = (KEY_LENGTH / 8 );
+unsigned num_rand_words = KEY_LENGTH / DATA_BITWIDTH;
 
 static void start_timer(struct timeval *begin)
 {
@@ -202,6 +203,8 @@ int brain_bit_main(token_t *buf)
 
 	init_buffer(buf, gold);
 
+	((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->key_length = key_length;
+
 	printf("\n====== %s ======\n\n", cfg_000[0].devname);
 	/* <<--print-params-->> */
 	printf("  .avg = %f\n", avg);
@@ -306,19 +309,41 @@ int miller_rabin(mpz_t n, gmp_randstate_t rand_state) {
     return PROBABLE_PRIME;
 }
 
-int run_rand(unsigned char* keys)
+int run_rand(char* keys, int k)
 {
- /*  int i, j, k;
+	if(keys == NULL) {
+		printf("Error allocating memory for rand() \n");
+		return -1;
+	}
 
-    k = 0;
-    for(j = 0; j < KEY_NUM; j++)
-        k++;
+        start_timer(&hw_begin_0);
+
         srand(k);
-        for(i = 0; i < num_rand_words; i++){
+        for(int i = 0; i < num_rand_words; i++){
             keys[i * sizeof(token_t)] = rand();
         }
-*/
-    return 0;
+
+        end_timer(&hw_begin_0, &hw_end_0);
+
+        for(int i = 0; i < num_rand_words; i++)
+	    if(PRINT)
+	        printf("%x", (unsigned int) keys[i * sizeof(token_t)]);
+
+	if(PRINT)
+		printf("\n");
+
+        /* seconds = hw_end_0.tv_sec - hw_begin_0.tv_sec; */
+        /* microseconds = hw_end_0.tv_usec - hw_begin_0.tv_usec; */
+        /* elapsed += seconds + microseconds*1e-6; */
+
+
+	/* avg_elapsed_us = (double) (elapsed * 1e6) / MAX_ITER; */
+
+	/* printf("Randomness source: rand()\n"); */
+	/* printf("Number of random bits: %d\n", KEY_LEN); */
+	/* printf("Time measured: %u Iterations, avg time %.4f us.\n", MAX_ITER, avg_elapsed_us); */
+
+	return 0;
 }
 
 int run_dev_urand(char *keys)
@@ -360,10 +385,16 @@ int run_dev_urand(char *keys)
 }
 
 
-int main(int argc, char* argv[])
+//int main(int argc, char* argv[])
+int prime_check(unsigned key_length_out)
 {
+
+    key_len_bytes = (key_length_out / 8 );
+    num_rand_words = key_length_out / DATA_BITWIDTH;
+    key_length = key_length_out;
+
     int i;
-    int tot_primes_urand = 0, tot_primes_bb = 0;
+    int tot_primes_urand = 0, tot_primes_bb = 0, tot_primes_rand = 0;
 
     mpz_t n;
     gmp_randstate_t rand_state;
@@ -373,10 +404,10 @@ int main(int argc, char* argv[])
     /* char key[200]; */
     /* char tmp[200]; */
 
-    int max_digits = 100;
-    int size = num_rand_words*max_digits +1;
-    char* key = malloc(size);
-    memset(key, 0, size);
+    int max_digits = 500;
+    int key_size = num_rand_words*max_digits +1;
+    char* key = malloc(key_size);
+    memset(key, 0, key_size);
 
     char *str = &key[0];
     /* char *str_tmp = &tmp[0]; */
@@ -397,19 +428,8 @@ int main(int argc, char* argv[])
 
     i = 0;
     for(i = 0; i < KEY_NUM * num_rand_words; i+=num_rand_words){
-        /* sprintf(key, "%u%u%u%u%u%u%u%u", */
-	/* 	out_location[i], out_location[i+1], */
-        /*         out_location[i+2], out_location[i+3], */
-        /*         out_location[i+4], out_location[i+5], */
-        /*         out_location[i+6], out_location[i+7]); */
 
-        /* printf("key %s --- %u %u %u %u %u %u %u %u\n", key, */
-	/* 	out_location[i], out_location[i+1], */
-        /*         out_location[i+2], out_location[i+3], */
-        /*         out_location[i+4], out_location[i+5], */
-        /*         out_location[i+6], out_location[i+7]); */
-
-	memset(key, 0, size);
+	memset(key, 0, key_size);
 
 	int pos = 0;
 	for(int j = 0; j < num_rand_words; j++){
@@ -431,7 +451,7 @@ int main(int argc, char* argv[])
         mpz_init_set_str(n, str, 10);
         if(miller_rabin(n, rand_state) == PROBABLE_PRIME) {
 	    end_timer(&prime_begin_0, &prime_end_0);
-            printf("PRIME Brain_bit\n");
+            printf("PRIME Brain_bit %s\n", str);
             tot_primes_bb++;
         }
         else{
@@ -472,20 +492,12 @@ int main(int argc, char* argv[])
     for(i = 0; i < KEY_NUM ; i++) {
 
         run_dev_urand(&key_urand[0]);
-	memset(key, 0, size);
+	memset(key, 0, key_size);
 
 	int pos = 0;
         for (int j = 0; j < num_rand_words; j++)
 	    pos += sprintf(&key[pos], "%u", *(unsigned int*) (key_urand + j * sizeof(token_t)));
 
-            /* sprintf(key, "%u%u%u%u%u%u%u%u", *(unsigned int*) (key_urand), */
-            /*         *(unsigned int*) (key_urand + 1 * sizeof(token_t)), */
-            /*         *(unsigned int*) (key_urand + 2 * sizeof(token_t)), */
-            /*         *(unsigned int*) (key_urand + 3 * sizeof(token_t)), */
-            /*         *(unsigned int*) (key_urand + 4 * sizeof(token_t)), */
-            /*         *(unsigned int*) (key_urand + 5 * sizeof(token_t)), */
-            /*         *(unsigned int*) (key_urand + 6 * sizeof(token_t)), */
-            /*         *(unsigned int*) (key_urand + 7 * sizeof(token_t))); */
 
 	if(PRINT_COMPOSITE){
 	    printf("\nurandom key is = %s\n", str);
@@ -506,7 +518,7 @@ int main(int argc, char* argv[])
         mpz_init_set_str(n, str, 10);
         if(miller_rabin(n, rand_state) == PROBABLE_PRIME) {
 	    end_timer(&prime_begin_0, &prime_end_0);
-            printf("PRIME /dev/urandom \n");
+            printf("PRIME /dev/urandom %s\n", str);
             tot_primes_urand++;
         }
         else{
@@ -520,17 +532,98 @@ int main(int argc, char* argv[])
 	total_elapsed = 0;
     }
 
-    printf("************************************************************************************************** \n");
-    printf("Report: %u Prime Numbers from /dev/urandom out of %u total keys gen(us) %f\n", tot_primes_urand, KEY_NUM, (total_elapsed_urand / 1e3));
-    printf("*************************************************************************************************** \n");
+
+    printf("\nChecking primality on rand() keys.....\n");
+
+    char key_rand[key_len_bytes];
+
+
+    str = &key[0];
+
+    i = 0;
+    for(i = 0; i < KEY_NUM ; i++) {
+
+        run_rand(&key_rand[0], i);
+	memset(key, 0, key_size);
+
+	int pos = 0;
+        for (int j = 0; j < num_rand_words; j++)
+	    pos += sprintf(&key[pos], "%u", *(unsigned int*) (key_rand + j * sizeof(token_t)));
+
+
+	if(PRINT_COMPOSITE){
+	    printf("\nrand() key is = %s\n", str);
+	    printf("words were = \n");
+	    for(int j = 0; j < num_rand_words; j++){
+		printf("%u ", *(unsigned int*) (key_rand + j * sizeof(token_t)));
+	    }
+	    printf("\n");
+	}
+
+        //Reset timer
+	total_elapsed_rand += total_elapsed;
+	total_elapsed = 0;
+
+        //start timer
+        start_timer(&prime_begin_0);
+
+        mpz_init_set_str(n, str, 10);
+        if(miller_rabin(n, rand_state) == PROBABLE_PRIME) {
+	    end_timer(&prime_begin_0, &prime_end_0);
+            printf("PRIME rand() %s\n", str);
+            tot_primes_rand++;
+
+	    if(PRINT_COMPOSITE){
+		    printf("\nrand() prime is = %s\n", str);
+		    printf("words were = \n");
+		    for(int j = 0; j < num_rand_words; j++){
+			    printf("%u ", *(unsigned int*) (key_rand + j * sizeof(token_t)));
+		    }
+		    printf("\n");
+	    }
+
+        }
+        else{
+	    end_timer(&prime_begin_0, &prime_end_0);
+	    if(PRINT_COMPOSITE)
+		    printf("COMPOSITE /dev/urandom\n");
+	}
+
+        //Reset timer
+	total_elapsed_prime += total_elapsed;
+	total_elapsed = 0;
+    }
 
     printf("*************************************************************************************************** \n");
     printf("Report: %u Prime Numbers from brain_bit out of %u total keys total keys gen time(us) %f\n", tot_primes_bb, KEY_NUM, (float) (elapsed_bb_ns / 1e3));
     printf("****************************************************************************************************** \n");
 
+    printf("************************************************************************************************** \n");
+    printf("Report: %u Prime Numbers from /dev/urandom out of %u total keys gen(us) %f\n", tot_primes_urand, KEY_NUM, (float) (total_elapsed_urand / 1e3));
     printf("*************************************************************************************************** \n");
-    printf("Report: Average primality check for %d key size and %d keys time(us) %f\n", KEY_LENGTH, KEY_NUM*2, (float) (total_elapsed_prime / 1e3) / (KEY_NUM*2));
+
+    printf("************************************************************************************************** \n");
+    printf("Report: %u Prime Numbers from rand() out of %u total keys gen(us) %f\n", tot_primes_rand, KEY_NUM, (float) (total_elapsed_rand / 1e3));
+    printf("*************************************************************************************************** \n");
+
+    printf("*************************************************************************************************** \n");
+    printf("Report: Average primality check for %d key size and %d keys time(us) %f\n", key_length, KEY_NUM*3, (float) (total_elapsed_prime / 1e3) / (KEY_NUM*3));
     printf("****************************************************************************************************** \n");
 
     return 0;
+}
+
+int main(int argc, char* argv[]){
+
+unsigned key = 256;
+int num = prime_check(key);
+
+key = 512;
+num = prime_check(key);
+
+key = 1024;
+num = prime_check(key);
+
+return num;
+
 }

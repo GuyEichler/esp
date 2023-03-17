@@ -15,12 +15,12 @@ typedef int32_t token_t;
 #define STD 38.626628825256695
 #define R_val 1.5
 #define L_val 1500
-#define KEY_BATCH 100
-#define KEY_NUM 50
+#define KEY_BATCH 200
+#define KEY_NUM 1
 #define VAL_NUM 0
 #define TOT_ITER 1
-#define D 5
-#define H 10
+#define D 7
+#define H 12
 
 /* <<--params-->> */
 const float avg = AVG;

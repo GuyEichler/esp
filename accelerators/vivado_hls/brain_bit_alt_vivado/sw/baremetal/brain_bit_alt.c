@@ -33,7 +33,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 2048;
+const int32_t key_length = 256;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
@@ -41,10 +41,10 @@ unsigned* R_ptr = (unsigned*)&R;
 /* const int32_t L = 1500; */
 const int32_t key_batch = 200;
 const int32_t key_num = 1;
-const int32_t val_num = 1;
+const int32_t val_num = 0;
 const int32_t tot_iter = 1;
-const int32_t d = 5;
-const int32_t h = 10;
+const int32_t d = 9;
+const int32_t h = 12;
 const float Rs = R * std;
 
 static unsigned in_words_adj;
@@ -175,7 +175,8 @@ static void init_buf (token_t *in, token_t * gold)
 			int mod = pow(2, h);
 			if(!filter){
 				//result can be a negative number here
-				int result_alt = floor((float)(((val - avg) / (2*Rs)) * Rs * mul));
+				/* int result_alt = floor((float)(((val - avg) / (2*Rs)) * Rs * mul)); */
+				int result_alt = floor((float)(((val - avg) / 2) * mul));
 				result_alt = result_alt % mod;
 				//but result can only be a positive number
 				unsigned result = result_alt + mod;
@@ -318,21 +319,27 @@ int main(int argc, char * argv[])
 			// Flush (customize coherence model here)
 			esp_flush(coherence);
 
-			esp_monitor_args_t mon_args;
-			const int ACC_TILE_IDX = 3;
-			mon_args.read_mode = ESP_MON_READ_SINGLE;
-			mon_args.tile_index = ACC_TILE_IDX;
-			mon_args.mon_index = MON_DVFS_BASE_INDEX + 3;
-			unsigned int cycles_start, cycles_end, cycles_diff;
+			esp_monitor_args_t mon_args_lsb, mon_args_msb;
+			const int ACC_TILE_IDX = 5;
+			mon_args_lsb.read_mode = ESP_MON_READ_SINGLE;
+			mon_args_lsb.tile_index = ACC_TILE_IDX;
+			mon_args_lsb.mon_index = 16;//MON_DVFS_BASE_INDEX + 3;
+			mon_args_msb.read_mode = ESP_MON_READ_SINGLE;
+			mon_args_msb.tile_index = ACC_TILE_IDX;
+			mon_args_msb.mon_index = 17;//MON_DVFS_BASE_INDEX + 3;
+			unsigned long int cycles_start_l, cycles_end_l, cycles_diff_l;
+			unsigned long int cycles_start_m, cycles_end_m, cycles_diff_m;
 
-			unsigned total_time = 0;
-			unsigned N_runs = 1;
+			unsigned long long total_time = 0;
+			unsigned N_runs = 10;
 
 			for(int k = 0; k < N_runs; k++){
 				// Start accelerators
 				printf("  Start...\n");
 
-				cycles_start = esp_monitor(mon_args, NULL);
+				unsigned long long tmp = 0;
+				cycles_start_l = esp_monitor(mon_args_lsb, NULL);
+				cycles_start_m = esp_monitor(mon_args_msb, NULL);
 
 				iowrite32(dev, CMD_REG, CMD_MASK_START);
 
@@ -343,13 +350,21 @@ int main(int argc, char * argv[])
 					done &= STATUS_MASK_DONE;
 				}
 
-				cycles_end = esp_monitor(mon_args, NULL);
-				cycles_diff = sub_monitor_vals(cycles_start, cycles_end);
+				cycles_end_l = esp_monitor(mon_args_lsb, NULL);
+				cycles_diff_l = sub_monitor_vals(cycles_start_l, cycles_end_l);
 				/* printf("Monitr time is %u %u %u \n", cycles_start, cycles_end, cycles_diff); */
 
-				unsigned nano = cycles_diff * 20; //50MHz
-				total_time += nano;
-				printf("Accelerator runtime: %u ns \n", nano);
+				/* unsigned nano = cycles_diff * 20; //50MHz - vcu707 */
+				/* total_time += nano; */
+				/* printf("Accelerator runtime: %u ns \n", nano); */
+
+				printf("Accelerator runtime: %u cycles LSB\n", cycles_diff_l);
+				printf("Accelerator runtime: %u cycles MSB\n", cycles_diff_m);
+				tmp = (cycles_diff_m << 32) + cycles_diff_l;
+				//tmp = cycles_diff_l;
+				printf("Accelerator total runtime: %llu cycles\n", tmp);
+				total_time += tmp;
+
 
 				iowrite32(dev, CMD_REG, 0x0);
 
@@ -379,7 +394,7 @@ int main(int argc, char * argv[])
 			/* errors = validate_buf(&mem[out_offset], gold); */
 
 			total_time = total_time / N_runs;
-			printf("Average runtime: %u ns \n", total_time);
+			printf("Average runtime: %u cycles \n", total_time);
 
 			float total = 100 * (float) errors / (key_length*key_batch);
 			if (total > 1)

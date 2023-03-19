@@ -732,7 +732,7 @@ int run_both_mem_1x1(int N)
     esp_free(buf_brain);
     esp_free(buf_aes);
 
-    return errors;
+    return total_time;
 }
 
 int run_both_p2p_1x1(int N)
@@ -1744,7 +1744,7 @@ int run_both_p2p_3x2(int N)
 
     esp_free(buf_brain);
 
-    return errors;
+    return total_time;
 }
 
 int wrap_1x1_mem_avg10(void)
@@ -1918,7 +1918,7 @@ int wrap_2x3_avg10(void)
 int main(int argc, char **argv)
 {
     log_file = fopen("log.txt", "w");
-    log_0309 = fopen("log_0309.txt", "w");
+    log_0309 = fopen("log_0317.txt", "w");
 
     int total_errors = -7;
     /* int errors_0 = 0; */
@@ -1951,22 +1951,22 @@ int main(int argc, char **argv)
     input_bytes = 16;
     wrap_1x1_mem_avg10();
 
-    /* key_length = 512; */
-    /* input_bytes = 48; */
-    /* wrap_1x1_mem_avg10(); */
+    key_length = 512;
+    input_bytes = 48;
+    wrap_1x1_mem_avg10();
 
-    /* key_length = 1024; */
-    /* input_bytes = 112; */
-    /* wrap_1x1_mem_avg10(); */
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_1x1_mem_avg10();
 
-    /* key_length = 2048; */
-    /* input_bytes = 240; */
-    /* wrap_1x1_mem_avg10(); */
+    // key_length = 2048;
+    // input_bytes = 240;
+    // wrap_1x1_mem_avg10();
 
-    /* // -- 1 brain 1 aes */
-    /* key_length = 256; */
-    /* input_bytes = 16; */
-    /* wrap_1x1_avg10(); */
+    // -- 1 brain 1 aes
+    // key_length = 256;
+    // input_bytes = 16;
+    // wrap_1x1_avg10();
 
     // key_length = 512;
     // input_bytes = 48;
@@ -1976,7 +1976,7 @@ int main(int argc, char **argv)
     // input_bytes = 112;
     // wrap_1x1_avg10();
 
-    // // -- 2 brain 1 aes
+    // -- 2 brain 1 aes
     // key_length = 256;
     // input_bytes = 16;
     // wrap_2x1_avg10();
@@ -1989,7 +1989,7 @@ int main(int argc, char **argv)
     // input_bytes = 112;
     // wrap_2x1_avg10();
 
-    // // -- 3 brain 1 aes
+    // -- 3 brain 1 aes
     // key_length = 256;
     // input_bytes = 16;
     // wrap_3x1_avg10();
@@ -2002,7 +2002,7 @@ int main(int argc, char **argv)
     // input_bytes = 112;
     // wrap_3x1_avg10();
 
-    // // -- 4 brain 1 aes
+    // -- 4 brain 1 aes
     // key_length = 256;
     // input_bytes = 16;
     // wrap_4x1_avg10();
@@ -2015,7 +2015,7 @@ int main(int argc, char **argv)
     // input_bytes = 112;
     // wrap_4x1_avg10();
 
-    // // -- 4 brain 4 aes
+    // -- 4 brain 4 aes
     // key_length = 256;
     // input_bytes = 16;
     // wrap_4x4_avg10();
@@ -2028,7 +2028,7 @@ int main(int argc, char **argv)
     // input_bytes = 112;
     // wrap_4x4_avg10();
 
-    // // -- 1 brain 2 aes
+    // -- 1 brain 2 aes
     // key_length = 256;
     // input_bytes = 16;
     // wrap_1x2_avg10();
@@ -2063,7 +2063,7 @@ int main(int argc, char **argv)
     fclose(log_file);
     fclose(log_0309);
 
-    printf("0315.01\n");
+    printf("0317.03\n");
 
     return total_errors;
 }

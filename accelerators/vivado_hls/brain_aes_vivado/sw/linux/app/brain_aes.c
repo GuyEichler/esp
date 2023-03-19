@@ -728,7 +728,7 @@ int run_both_mem_1x1(int N)
     esp_free(buf_brain);
     esp_free(buf_aes);
 
-    return errors;
+    return total_time;
 }
 
 int run_both_p2p_1x1(int N)
@@ -1944,17 +1944,17 @@ int main(int argc, char **argv)
     input_bytes = 16;
     wrap_1x1_mem_avg10();
 
-    /* key_length = 512; */
-    /* input_bytes = 48; */
-    /* wrap_1x1_mem_avg10(); */
+    key_length = 512;
+    input_bytes = 48;
+    wrap_1x1_mem_avg10();
 
-    /* key_length = 1024; */
-    /* input_bytes = 112; */
-    /* wrap_1x1_mem_avg10(); */
+    key_length = 1024;
+    input_bytes = 112;
+    wrap_1x1_mem_avg10();
 
-    /* key_length = 2048; */
-    /* input_bytes = 240; */
-    /* wrap_1x1_mem_avg10(); */
+    // key_length = 2048;
+    // input_bytes = 240;
+    // wrap_1x1_mem_avg10();
 
     // // -- 1 brain 1 aes
     // key_length = 256;
@@ -2056,7 +2056,7 @@ int main(int argc, char **argv)
     fclose(log_file);
     fclose(log_0309);
 
-    printf("0315.01\n");
+    printf("0317.04\n");
 
     return total_errors;
 }

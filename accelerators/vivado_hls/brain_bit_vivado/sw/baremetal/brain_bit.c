@@ -33,13 +33,13 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 /* <<--params-->> */
 const float avg = 3.0677295382679177;
 unsigned* avg_ptr = (unsigned*)&avg;
-const int32_t key_length = 256;
+const int32_t key_length = 1536;
 const float std = 38.626628825256695;
 unsigned* std_ptr = (unsigned*)&std;
 const float R = 1.5;
 unsigned* R_ptr = (unsigned*)&R;
 const int32_t L = 1500;
-const int32_t key_batch = 200;
+const int32_t key_batch = 5;
 const int32_t key_num = 1;
 const int32_t val_num = 0;
 const int32_t tot_iter = 1;

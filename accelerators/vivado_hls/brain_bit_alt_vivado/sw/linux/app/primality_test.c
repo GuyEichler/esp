@@ -163,8 +163,20 @@ static void init_buffer(token_t *in, token_t * gold)
 		for (j = 0; j < key_length; j++){
 			float val = val_arr[jump + i * in_words_adj + j];
                         bool filter = (fabs((float)val - avg) >= Rs);
+			int mul = pow(2, d);
+			int mod = pow(2, h);
 			if(!filter){
-				int32_t result = floor((float)(((val - (avg - Rs)) / (2*Rs)) * L));
+				//result can be a negative number here
+				int result_alt = floor((float)(((val - avg) / (2*Rs)) * Rs * mul));
+				result_alt = result_alt % mod;
+				//but result can only be a positive number
+				unsigned result = result_alt + mod;
+				result = result % mod;
+				// result = ((result_alt % mod) + mod) % mod;
+				unsigned sum_result = 0;
+				for(unsigned k = 0; k < h; k++)
+					sum_result = sum_result + ((result >> k) % 2);
+				result = sum_result;
 				result = result % 2;
 				gold[i * out_words_adj + j] = (token_t) result;
                                 //printf("Generated golden value %d\n", gold[i * out_words_adj + j]);
@@ -208,7 +220,7 @@ int brain_bit_main(token_t *buf)
 
 	init_buffer(buf, gold);
 
-	((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->key_length = key_length;
+	((struct brain_bit_alt_vivado_access*) cfg_000[0].esp_desc)->key_length = key_length;
 
 	printf("\n====== %s ======\n\n", cfg_000[0].devname);
 	/* <<--print-params-->> */
@@ -216,7 +228,8 @@ int brain_bit_main(token_t *buf)
 	printf("  .key_length = %d\n", key_length);
 	printf("  .std = %f\n", std);
 	printf("  .R = %f\n", R);
-	printf("  .L = %d\n", L);
+	printf("  .d = %d\n", D);
+	printf("  .h = %d\n", H);
 	printf("  .key_batch = %d\n", key_batch);
 	printf("  .key_num = %d\n", key_num);
 	printf("\n  ** START **\n");
@@ -225,9 +238,9 @@ int brain_bit_main(token_t *buf)
 	unsigned std_u = *std_ptr;
 	unsigned R_u = *R_ptr;
 
-	((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->avg = avg_u;
-	((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->std = std_u;
-	((struct brain_bit_vivado_access*) cfg_000[0].esp_desc)->R = R_u;
+	((struct brain_bit_alt_vivado_access*) cfg_000[0].esp_desc)->avg = avg_u;
+	((struct brain_bit_alt_vivado_access*) cfg_000[0].esp_desc)->std = std_u;
+	((struct brain_bit_alt_vivado_access*) cfg_000[0].esp_desc)->R = R_u;
 
 	token_t* out_location = &buf[out_offset];
 	for(int i = 0; i < out_len; i++)
@@ -425,17 +438,17 @@ int prime_check(unsigned key_length_out, int* total, int idx)
 
     if((key_length == 256 && bb_idx < 3) || bb_idx < 1){
     /* if((key_length == 256 && bb_idx < 35) || (key_length == 512 && bb_idx < 17) || (key_length == 1024 && bb_idx < 8)){ */
-    printf("starting brain bit primailty test \n");
+    printf("starting brain bit alt primailty test \n");
 
     init_parameters();
     buf = (token_t *) esp_alloc(size);
 
     brain_bit_main(buf);
 
-    printf("**** Brain Bit DONE ****\n");
+    printf("**** Brain Bit alt DONE ****\n");
     token_t* out_location = &buf[out_offset];
 
-    printf("\nChecking primality on brain_bit keys.....\n");
+    printf("\nChecking primality on brain_bit_alt keys.....\n");
 
     i = 0;
     for(i = 0; i < KEY_NUM; i++){
@@ -448,7 +461,7 @@ int prime_check(unsigned key_length_out, int* total, int idx)
 	}
 
 	if(PRINT_COMPOSITE){
-	    printf("\nbrain_bit key is = %s\n", str);
+	    printf("\nbrain_bit alt key is = %s\n", str);
 	    printf("words were = \n");
 	    for(int j = 0; j < num_rand_words; j++){
 		printf("%u ", out_location[i*num_rand_words+j]);
@@ -462,13 +475,13 @@ int prime_check(unsigned key_length_out, int* total, int idx)
         mpz_init_set_str(n, str, 10);
         if(miller_rabin(n, rand_state) == PROBABLE_PRIME) {
 	    end_timer(&prime_begin_0, &prime_end_0);
-            printf("PRIME Brain_bit %s\n", str);
+            printf("PRIME Brain_bit alt %s\n", str);
             tot_primes_bb++;
         }
         else{
 	    end_timer(&prime_begin_0, &prime_end_0);
 	    if(PRINT_COMPOSITE)
-	        printf("COMPOSITE Brain_bit\n");
+	        printf("COMPOSITE Brain_bit_alt\n");
 	}
 
 
@@ -617,7 +630,7 @@ int prime_check(unsigned key_length_out, int* total, int idx)
     total[2] += tot_primes_rand;
 
     printf("*************************************************************************************************** \n");
-    printf("Report: %u Prime Numbers from brain_bit out of %u total keys total keys gen time(us) %f\n", tot_primes_bb, KEY_NUM, (float) (elapsed_bb_ns / 1e3));
+    printf("Report: %u Prime Numbers from brain_bit_alt out of %u total keys total keys gen time(us) %f\n", tot_primes_bb, KEY_NUM, (float) (elapsed_bb_ns / 1e3));
     printf("****************************************************************************************************** \n");
 
     printf("************************************************************************************************** \n");
@@ -684,17 +697,17 @@ int main(int argc, char* argv[]){
 	}
 
 	printf("256-bit numbers:\n");
-	printf("Total prime numbers from brain bit: %d, average per %d iterations: %f\n", total_prime_bb_256, KEY_NUM, (float) total_prime_bb_256/iter);
+	printf("Total prime numbers from brain bit alt: %d, average per %d iterations: %f\n", total_prime_bb_256, KEY_NUM, (float) total_prime_bb_256/iter);
 	printf("Total prime numbers from /dev/urandom: %d, average per %d iterations: %f\n", total_prime_urand_256, KEY_NUM, (float) total_prime_urand_256/iter);
 	printf("Total prime numbers from rand(): %d, average per %d iterations: %f\n", total_prime_rand_256, KEY_NUM, (float) total_prime_rand_256/iter);
 
 	printf("512-bit numbers:\n");
-	printf("Total prime numbers from brain bit: %d, average per %d iterations: %f\n", total_prime_bb_512, KEY_NUM, (float) total_prime_bb_512/iter);
+	printf("Total prime numbers from brain bit alt: %d, average per %d iterations: %f\n", total_prime_bb_512, KEY_NUM, (float) total_prime_bb_512/iter);
 	printf("Total prime numbers from /dev/urandom: %d, average per %d iterations: %f\n", total_prime_urand_512, KEY_NUM, (float) total_prime_urand_512/iter);
 	printf("Total prime numbers from rand(): %d, average per %d iterations: %f\n", total_prime_rand_512, KEY_NUM, (float) total_prime_rand_512/iter);
 
 	printf("1024-bit numbers:\n");
-	printf("Total prime numbers from brain bit: %d, average per %d iterations: %f\n", total_prime_bb_1024, KEY_NUM, (float) total_prime_bb_1024/iter);
+	printf("Total prime numbers from brain bit alt: %d, average per %d iterations: %f\n", total_prime_bb_1024, KEY_NUM, (float) total_prime_bb_1024/iter);
 	printf("Total prime numbers from /dev/urandom: %d, average per %d iterations: %f\n", total_prime_urand_1024, KEY_NUM, (float) total_prime_urand_1024/iter);
 	printf("Total prime numbers from rand(): %d, average per %d iterations: %f\n", total_prime_rand_1024, KEY_NUM, (float) total_prime_rand_1024/iter);
 

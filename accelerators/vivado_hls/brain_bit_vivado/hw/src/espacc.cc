@@ -44,12 +44,12 @@ load_data:
 
 #ifndef __SYNTHESIS__
 
-        std::cout << "LOAD : Loading new values " << std::endl;
-        std::cout << "LOAD : dma_index "
-                  << dma_index
-                  << " dma_length "
-                  << dma_length
-                  << std::endl;
+        // std::cout << "LOAD : Loading new values " << std::endl;
+        // std::cout << "LOAD : dma_index "
+        //           << dma_index
+        //           << " dma_length "
+        //           << dma_length
+        //           << std::endl;
 
 #endif
 
@@ -61,11 +61,11 @@ load_data:
                 _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
 
 #ifndef __SYNTHESIS__
-                if(is_keys == 0)
-                    std::cout << "LOAD : Received "
-                              << _inbuff[i * VALUES_PER_WORD + j]
-                              << " in memory "
-                              << in1[dma_index + i].word[j] << std::endl;
+                // if(is_keys == 0)
+                //     std::cout << "LOAD : Received "
+                //               << _inbuff[i * VALUES_PER_WORD + j]
+                //               << " in memory "
+                //               << in1[dma_index + i].word[j] << std::endl;
 #endif
 
             }
@@ -117,11 +117,11 @@ store_data:
         store_ctrl.size = SIZE_WORD_T;
 
 #ifndef __SYNTHESIS__
-                std::cout << "STORE : dma_index "
-                          << dma_index
-                          << " dma_length "
-                          << dma_length
-                          << std::endl;
+                // std::cout << "STORE : dma_index "
+                //           << dma_index
+                //           << " dma_length "
+                //           << dma_length
+                //           << std::endl;
 #endif
 
         for (unsigned i = 0; i < dma_length; i++) {
@@ -132,10 +132,10 @@ store_data:
                 out[dma_index + i].word[j] = _outbuff_bit[i * VALUES_PER_WORD + j];
 
 #ifndef __SYNTHESIS__
-                std::cout << "STORE : Sent "
-                          << std::bitset<32>(_outbuff_bit[i * VALUES_PER_WORD + j])
-                          << " in memory "
-                          << std::bitset<32>(out[dma_index + i].word[j]) << std::endl;
+                // std::cout << "STORE : Sent "
+                //           << std::bitset<32>(_outbuff_bit[i * VALUES_PER_WORD + j])
+                //           << " in memory "
+                //           << std::bitset<32>(out[dma_index + i].word[j]) << std::endl;
 #endif
 
             }
@@ -143,13 +143,13 @@ store_data:
 
 
 #ifndef __SYNTHESIS__
-        std::cout << "STORE : Output was sent " << std::endl;
+        // std::cout << "STORE : Output was sent " << std::endl;
 #endif
 
         keys_done = keys_done + 1;
 
 #ifndef __SYNTHESIS__
-        std::cout << "STORE : Keys generated " << keys_done << std::endl;
+        // std::cout << "STORE : Keys generated " << keys_done << std::endl;
 #endif
 
     }
@@ -184,7 +184,7 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
     // static ap_uint<32> bit_val_tot = 0;
 
 #ifndef __SYNTHESIS__
-    std::cout << "COMPUTE : Input offset is " << input_offset << std::endl;
+    // std::cout << "COMPUTE : Input offset is " << input_offset << std::endl;
 #endif
 
     unsigned limit = in_length < SIZE_IN_CHUNK_DATA ? in_length : SIZE_IN_CHUNK_DATA;
@@ -246,7 +246,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
         if(output_idx == in_length){
 
 #ifndef __SYNTHESIS__
-            std::cout << "COMPUTE : Output idx equals in_length " << output_idx << std::endl;
+            // std::cout << "COMPUTE : Output idx equals in_length " << output_idx << std::endl;
 #endif
 
             is_output_ready = true;
@@ -262,7 +262,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
                 input_offset = i+1;
 
 #ifndef __SYNTHESIS__
-                std::cout << "COMPUTE : Input offset is set to " << input_offset << std::endl;
+                // std::cout << "COMPUTE : Input offset is set to " << input_offset << std::endl;
 #endif
 
                 break;
@@ -271,7 +271,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
                 input_offset = 0;
 
 #ifndef __SYNTHESIS__
-                std::cout << "COMPUTE : Input offset is initialized " << std::endl;
+                // std::cout << "COMPUTE : Input offset is initialized " << std::endl;
 #endif
 
 
@@ -285,7 +285,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
         input_offset = 0;
 
 #ifndef __SYNTHESIS__
-        std::cout << "COMPUTE : Load can load new values. Input offset initialized. Output index is " << output_idx << std::endl;
+        // std::cout << "COMPUTE : Load can load new values. Input offset initialized. Output index is " << output_idx << std::endl;
 #endif
 
     }
@@ -294,7 +294,7 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
         // add = add + 1;
 
 #ifndef __SYNTHESIS__
-        std::cout << "COMPUTE : Load should be blocked " << std::endl;
+        // std::cout << "COMPUTE : Load should be blocked " << std::endl;
 #endif
 // #ifndef __SYNTHESIS__
 //         std::cout << "COMPUTE : Adding another batch. Total is " << key_batch + add << std::endl;
@@ -307,10 +307,10 @@ COMPUTE_LOOP:for (i = 0 + input_offset; i < limit; i++){
         input_offset = 0;
 
 #ifndef __SYNTHESIS__
-    std::cout << "COMPUTE : END Input offset is " << input_offset << std::endl;
-    std::cout << "COMPUTE : END output idx is " << output_idx << std::endl;
-    std::cout << "COMPUTE : END load_values is " << load_values << std::endl;
-    std::cout << "COMPUTE : END keys_done is " << keys_done << std::endl;
+    // std::cout << "COMPUTE : END Input offset is " << input_offset << std::endl;
+    // std::cout << "COMPUTE : END output idx is " << output_idx << std::endl;
+    // std::cout << "COMPUTE : END load_values is " << load_values << std::endl;
+    // std::cout << "COMPUTE : END keys_done is " << keys_done << std::endl;
 #endif
 
 }
@@ -462,8 +462,8 @@ void top(out_dma_word_t *out, dma_word_t *in1,
 
 #ifndef __SYNTHESIS__
                 if(keys_done == key_num){
-                    std::cout << "TOP : Enough keys were generated " << std::endl;
-                    std::cout << "TOP : Value of b is " << b << std::endl;
+                    // std::cout << "TOP : Enough keys were generated " << std::endl;
+                    // std::cout << "TOP : Value of b is " << b << std::endl;
                 }
 #endif
 
@@ -534,7 +534,7 @@ void top(out_dma_word_t *out, dma_word_t *in1,
         // if(values_done == val_num+key_num){
         //     std::cout << "TOP : Enough values were generated " << std::endl;
         // }
-            std::cout << "TOP : Values were generated " << std::endl;
+            // std::cout << "TOP : Values were generated " << std::endl;
 #endif
 
             }

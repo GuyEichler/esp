@@ -18,15 +18,15 @@ int main(int argc, char **argv) {
     /* <<--params-->> */
     const word_t avg = 3.0677295382679177;
     const float avg_f = 3.0677295382679177;
-    const unsigned key_length = 2048;
+    const unsigned key_length = 1024;
     const word_t std = 38.626628825256695;
     const float std_f = 38.626628825256695;
     const word_t R = 1.5;
     const float R_f = 1.5;
     const unsigned L = 1500;
-    const unsigned key_batch = 200;
-    const unsigned key_num = 100;
-    const unsigned val_num = 16;
+    const unsigned key_batch = 1500;
+    const unsigned key_num = 1000;
+    const unsigned val_num = 0;
     const unsigned tot_iter = 1;
 
     uint32_t in_words_adj;
@@ -37,11 +37,22 @@ int main(int argc, char **argv) {
     uint32_t dma_out_size;
     uint32_t dma_size;
 
+    std::string outFileName = "/home/geichler/prime_test/keys_bb_" + std::to_string(key_length) + ".txt";
+    std::ofstream outFile;
+    outFile.open(outFileName.c_str());
+
+    outFile.is_open();
+    int errors = 0;
+
+    for(int z = 0; z < 50; z++) {
+
     // FILE* fp = fopen("/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_vivado/hw/tb/raw_values.txt", "r");
     // FILE* fp = fopen("raw_values.txt", "r");
     const int file_length = key_length*(key_batch+1);//78736896;
     // std::ifstream inFile("raw_values.txt");
     float val_arr[file_length];
+    float tmp;
+    std::string key_string= "";
 
     std::string inFileName = "/home/geichler/Desktop/esp_accelerators/esp_guy/esp/accelerators/vivado_hls/brain_bit_vivado/hw/tb/raw_values.txt";
     std::ifstream inFile;
@@ -50,6 +61,8 @@ int main(int argc, char **argv) {
     // printf("checking file.");
 
     if (inFile.is_open()){
+        for(int g = 0; g < file_length*z; g++)
+            inFile >> tmp;
         for (int i = 0; i < file_length; i++) {
             inFile >> val_arr[i];
             // std::cout.precision(19);
@@ -191,9 +204,8 @@ int main(int argc, char **argv) {
         }
 
 
-    std::cout << "\n ^*^*^* VALIDATION ^*^*^* \n" << std::endl;
+    // std::cout << "\n ^*^*^* VALIDATION ^*^*^* \n" << std::endl;
 
-    int errors = 0;
     int skip = 0;
     int key_counter = 0;
 
@@ -227,6 +239,7 @@ int main(int argc, char **argv) {
     word_t* outbuff_val = (word_t*) &outbuff_bit[0];
     bool done = false;
     unsigned offset = 0;
+    key_string = "";
 
     for(unsigned i = 0; i < key_batch; i++)
         for(unsigned j = 0; j < key_length; j++){
@@ -243,26 +256,30 @@ int main(int argc, char **argv) {
                 word_t gold_val = outbuff_gold[index];
                 if(gold_val != 3){
                     if(!(i == key_batch - (ceil((float)skip/key_length)) && (j > skip - 1) )){
-                        std::cout << "Calculated value " << std::dec << val << " Golden value " << outbuff_gold[index] << " for index " << std::dec << index - skip << std::endl;
+                        // std::cout << "Calculated value " << std::dec << val << " Golden value " << outbuff_gold[index] << " for index " << std::dec << index - skip << std::endl;
                         if (val != gold_val){
                             errors++;
-                            std::cout << "ERROR" << std::endl;
+                            // std::cout << "ERROR" << std::endl;
                         }
                     }
                 }
                 else{
-                    std::cout << "SKIPPING " << std::dec << index << " skip " << skip << std::endl;
+                    // std::cout << "SKIPPING " << std::dec << index << " skip " << skip << std::endl;
                     skip += 1;
                 }
 
-                if((index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
-                    std::cout << "LAST " << std::dec << index << " skip " << skip << std::endl;
+                if((index - skip + 1 > 0) && (index - skip + 1) % (key_length*(key_counter+1)) == 0 && index != 0){
+                    // std::cout << "LAST " << std::dec << index << " skip " << skip << std::endl;
                     key_counter++;
-                    std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
-                    std::cout << "\nKEY IS: [ ";
-                    for(int k = key_length / 32 - 1; k >= 0; k--)
-                        std::cout << std::hex << outbuff_bit[word-k] << " ";
-                    std::cout << "]\n" << std::endl;
+                    // std::cout << "\n----------KEY " << std::dec << key_counter << " DONE----------" << std::endl;
+                    // std::cout << "\nKEY IS: [ ";
+                    for(int k = key_length / 32 - 1; k >= 0; k--){
+                        key_string += std::to_string(outbuff_bit[word-k]);
+                        // std::cout << std::hex << outbuff_bit[word-k] << " ";
+                    }
+                    // std::cout << "]\n" << std::endl;
+                    outFile << key_string <<std::endl;
+                    key_string = "";
                 }
             }
             else if(!done){
@@ -311,26 +328,35 @@ int main(int argc, char **argv) {
             // std::cout << "Calculated value " << std::bitset<32>(val_word) << " Golden value " << std::bitset<32>(gold_val) << " for index " << std::dec << index << std::endl;
     }
 
-
-
-
-    float total = 100 * (float) errors / (key_length*key_batch);
-
-    if (total > 1)
-	std::cout << "Test FAILED with " << std::dec << total << "% errors." << std::endl;
-    else{
-	std::cout << "Keys generated: " << std::dec << key_counter << std::endl;
-	std::cout << "Number of bit errors: " << std::dec << errors << std::endl;
-	std::cout << "Test PASSED." << std::endl;
-    }
-
-    // Free memory
-
     free(mem);
     free(mem_out);
     free(inbuff);
     free(outbuff);
     free(outbuff_gold);
+
+    std::cout << "Iteration " << z << std::endl;
+    }
+    outFile.close();
+
+
+
+    // float total = 100 * (float) errors / (key_length*key_batch);
+
+    // if (total > 1)
+    //     std::cout << "Test FAILED with " << std::dec << total << "% errors." << std::endl;
+    // else{
+    //     std::cout << "Keys generated: " << std::dec << key_counter << std::endl;
+    //     std::cout << "Number of bit errors: " << std::dec << errors << std::endl;
+    //     std::cout << "Test PASSED." << std::endl;
+    // }
+
+    // // Free memory
+
+    // free(mem);
+    // free(mem_out);
+    // free(inbuff);
+    // free(outbuff);
+    // free(outbuff_gold);
 
     return 0;
 }

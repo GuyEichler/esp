@@ -3,7 +3,7 @@
 
 # HLS configs
 
-set dma_width {32 64}
+set dma_width {64}
 set word_widths {32}
 # specify if the input or the output of the accelerator are float
 # set dataype "" if input and output are NOT float

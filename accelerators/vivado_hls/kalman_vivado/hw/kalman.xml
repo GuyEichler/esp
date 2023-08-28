@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sld>
-  <accelerator name="kalman" desc="Accelerator KALMAN" data_size="7515" device_id="549" hls_tool="vivado_hls">
+  <accelerator name="kalman" desc="Accelerator KALMAN" data_size="512" device_id="049" hls_tool="vivado_hls">
     <param name="z_dim" desc="z_dim" />
     <param name="x_dim" desc="x_dim" />
     <param name="iter" desc="iter" />

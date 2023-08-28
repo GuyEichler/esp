@@ -18,7 +18,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 }
 
 
-#define SLD_KALMAN 0x549
+#define SLD_KALMAN 0x049
 #define DEV_NAME "sld,kalman_vivado"
 
 /* <<--params-->> */

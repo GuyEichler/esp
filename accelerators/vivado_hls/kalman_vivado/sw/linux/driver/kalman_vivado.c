@@ -28,7 +28,7 @@ static struct of_device_id kalman_device_ids[] = {
 		.name = "SLD_KALMAN_VIVADO",
 	},
 	{
-		.name = "eb_549",
+		.name = "eb_049",
 	},
 	{
 		.compatible = "sld,kalman_vivado",

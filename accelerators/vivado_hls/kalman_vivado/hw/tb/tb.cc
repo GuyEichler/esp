@@ -21,7 +21,7 @@ using namespace Eigen;
 
 #define STATES 6
 #define NEURONS 164
-#define TIME_STAMPS 1
+#define TIME_STAMPS 10
 
 int main(int argc, char **argv) {
 
@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
     const unsigned z_dim = NEURONS;
 
     uint32_t in_words_adj;
+    uint32_t in_words_adj_z;
     uint32_t out_words_adj;
     uint32_t in_size;
     uint32_t out_size;
@@ -42,8 +43,9 @@ int main(int argc, char **argv) {
 
 
     in_words_adj = round_up(z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim, VALUES_PER_WORD);
+    in_words_adj_z = round_up(z_dim, VALUES_PER_WORD);
     out_words_adj = round_up(x_dim + x_dim * x_dim, VALUES_PER_WORD);
-    in_size = in_words_adj * (iter);
+    in_size = in_words_adj + in_words_adj_z * (iter - 1);
     out_size = out_words_adj * (iter);
 
     dma_in_size = in_size / VALUES_PER_WORD;
@@ -70,45 +72,52 @@ int main(int argc, char **argv) {
         //Z
         for(; j < z_dim; j++)
         {
-            inbuff[i * in_words_adj + j] = (word_t) measurements[NEURONS * (i+1) + j];
-            //printf("Value of Z = %f \n", measurements[NEURONS * (i+1) + j]);
+            if(i == 0)
+                inbuff[i * in_words_adj + j] = (word_t) measurements[NEURONS * (i+1) + j];
+            else
+                inbuff[in_words_adj + (i-1) * in_words_adj_z + j] = (word_t) measurements[NEURONS * (i+1) + j];
+            // if(i == 3)
+            //     printf("Value of Z = %f index %d\n", measurements[NEURONS * (i+1) + j], in_words_adj + (i-1) * in_words_adj_z + j);
         }
 
-        //X
-        for(; j < z_dim + x_dim; j++)
+        if(i == 0) //only for first iteration
         {
-            inbuff[i * in_words_adj + j] = (word_t) initial[j - z_dim];
-        }
+            //X
+            for(; j < z_dim + x_dim; j++)
+            {
+                inbuff[i * in_words_adj + j] = (word_t) initial[j - z_dim];
+            }
 
-        //P
-        for(; j < z_dim + x_dim + x_dim * x_dim; j++)
-        {
-            inbuff[i * in_words_adj + j] = (word_t) 0.0;
-        }
+            //P
+            for(; j < z_dim + x_dim + x_dim * x_dim; j++)
+            {
+                inbuff[i * in_words_adj + j] = (word_t) 0.0;
+            }
 
-        //F
-        for(; j < z_dim + x_dim + x_dim * x_dim * 2; j++)
-        {
-            inbuff[i * in_words_adj + j] = (word_t) A[j - (z_dim + x_dim + x_dim * x_dim)];
-        }
+            //F
+            for(; j < z_dim + x_dim + x_dim * x_dim * 2; j++)
+            {
+                inbuff[i * in_words_adj + j] = (word_t) A[j - (z_dim + x_dim + x_dim * x_dim)];
+            }
 
-        //Q
-        for(; j < z_dim + x_dim + x_dim * x_dim * 3; j++)
-        {
-            inbuff[i * in_words_adj + j] = (word_t) W[j - (z_dim + x_dim + x_dim * x_dim * 2)];
-        }
+            //Q
+            for(; j < z_dim + x_dim + x_dim * x_dim * 3; j++)
+            {
+                inbuff[i * in_words_adj + j] = (word_t) W[j - (z_dim + x_dim + x_dim * x_dim * 2)];
+            }
 
-        //R
-        for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
-        {
-            inbuff[i * in_words_adj + j] = (word_t) Q[j - (z_dim + x_dim + x_dim * x_dim * 3)];
-        }
+            //R
+            for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
+            {
+                inbuff[i * in_words_adj + j] = (word_t) Q[j - (z_dim + x_dim + x_dim * x_dim * 3)];
+            }
 
-        //H
-        for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
-        {
-            inbuff[i * in_words_adj + j] = (word_t) H[j - (z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
-            //printf("Value of H = %f \n", measurements[NEURONS * (i+1) + j]);
+            //H
+            for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
+            {
+                inbuff[i * in_words_adj + j] = (word_t) H[j - (z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
+                //printf("Value of H = %f \n", measurements[NEURONS * (i+1) + j]);
+            }
         }
     }
 
@@ -130,19 +139,16 @@ int main(int argc, char **argv) {
     Matrix<float, STATES, STATES> Mat_I = Matrix<float, STATES, STATES>::Identity();
 
 
-    Matrix<float, NEURONS, NEURONS> Mat_S = Mat_H * (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
-    Matrix<float, STATES, NEURONS> Mat_K = (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * Mat_S.inverse();
-    Mat_P = (Mat_I -  Mat_K * Mat_H) * (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q);
-    //std::cout << "Matrix P = " << Mat_P << std::endl;
+    for(int i = 0; i < iter; i++)
+    {
+        Matrix<float, NEURONS, NEURONS> Mat_S = Mat_H * (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
+        Matrix<float, STATES, NEURONS> Mat_K = (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * Mat_S.inverse();
+        Mat_P = (Mat_I -  Mat_K * Mat_H) * (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q);
+        //std::cout << "Matrix P = " << Mat_P << std::endl;
 
-    float P_flat[STATES*STATES];
-    Map<Matrix<float, STATES, STATES, RowMajor> >(&P_flat[0], Mat_P.rows(), Mat_P.cols()) = Mat_P;
+        float P_flat[STATES*STATES];
+        Map<Matrix<float, STATES, STATES, RowMajor> >(&P_flat[0], Mat_P.rows(), Mat_P.cols()) = Mat_P;
 
-    // for(int i = 0; i < STATES*STATES; i++)
-    //     printf("P_flat[%d] = %.10f\n", i, P_flat[i]);
-
-
-    for(unsigned i = 0; i < iter; i++)
         for(unsigned j = 0; j < x_dim + x_dim * x_dim; j++)
         {
             if(j < x_dim)
@@ -152,6 +158,23 @@ int main(int argc, char **argv) {
                 outbuff_gold[i * out_words_adj + j] = (word_t) P_flat[j - x_dim];
             }
         }
+
+    }
+
+    // for(int i = 0; i < STATES*STATES; i++)
+    //     printf("P_flat[%d] = %.10f\n", i, P_flat[i]);
+
+
+    // for(unsigned i = 0; i < iter; i++)
+    //     for(unsigned j = 0; j < x_dim + x_dim * x_dim; j++)
+    //     {
+    //         if(j < x_dim)
+    //             outbuff_gold[i * out_words_adj + j] = (word_t) prediction[STATES * (i+1) + j];
+    //         else
+    //         {
+    //             outbuff_gold[i * out_words_adj + j] = (word_t) P_flat[j - x_dim];
+    //         }
+    //     }
 
 
     // Call the TOP function
@@ -180,13 +203,19 @@ int main(int argc, char **argv) {
             word_t diff = std::abs(gold_val - acc_val);
             MSE += std::pow(diff, 2.0);
 
-            if(j < x_dim)
-                std::cout << "Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " diff: " << diff << std::endl;
+            // if(j < x_dim)
+            //     std::cout << "X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
+            // else
+            //     std::cout << "P Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
 
 	    if (outbuff[i * out_words_adj + j] != outbuff_gold[i * out_words_adj + j]){
                 if(diff/gold_val > 1){
                     //printf("Accelerator value: %f Golden value: %f index: %d\n", acc_val, gold_val, i * out_words_adj + j);
-                    std::cout << "Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << std::endl;
+                    if(j < x_dim)
+                        std::cout << "X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
+                    else
+                        std::cout << "P Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
+
                     errors++;
                 }
             }

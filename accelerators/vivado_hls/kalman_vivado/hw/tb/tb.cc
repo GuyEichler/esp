@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
             //     std::cout << "P Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
 
 	    if (outbuff[i * out_words_adj + j] != outbuff_gold[i * out_words_adj + j]){
-                if(diff/gold_val > 1){
+                if(diff/gold_val > 0.5){
                     //printf("Accelerator value: %f Golden value: %f index: %d\n", acc_val, gold_val, i * out_words_adj + j);
                     if(j < x_dim)
                         std::cout << "X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;

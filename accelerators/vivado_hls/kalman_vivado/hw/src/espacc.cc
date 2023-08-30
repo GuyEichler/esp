@@ -222,19 +222,19 @@ store_data:
     store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
 	    out[dma_index + i].word[j] = _outbuff[i * VALUES_PER_WORD + j];
 
-#ifndef __SYNTHESIS__
-            int index = i * VALUES_PER_WORD + j;
+// #ifndef __SYNTHESIS__
+//             int index = i * VALUES_PER_WORD + j;
 
-            if(index < x_dim)
-            {
-//                 word_t tmp = X_pred[0][index];
-//                 out[dma_index + i].word[j] = tmp;
+//             if(index < x_dim)
+//             {
+// //                 word_t tmp = X_pred[0][index];
+// //                 out[dma_index + i].word[j] = tmp;
 
 
-                printf("outbuff[%d] = %f\n", index, _outbuff[index]);
+//                 printf("outbuff[%d] = %f\n", index, _outbuff[index]);
 
-            }
-#endif
+//             }
+// #endif
 //             else
 //             {
 //                 int col = index - x_dim - row*x_dim;

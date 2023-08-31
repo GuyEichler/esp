@@ -23,7 +23,9 @@ set_directive_inline -recursive "qr_inverse_top"
 #set_directive_inline -recursive "matrix_multiply_top"
 
 set_directive_pipeline "load/load_pred"
-# set_directive_pipeline "compute/LOOP_INT2_1"
+# set_directive_pipeline "compute/LOOP_INT2_2"
+set_directive_pipeline "compute/LOOP_S_inv_2"
+set_directive_pipeline -II 2 "compute/LOOP_SR_2"
 # set_directive_array_partition -type complete -dim 2 "compute" inter2
 # set_directive_array_partition -type complete -dim 0 "top" X
 # set_directive_array_partition -type complete -dim 0 "top" P
@@ -37,3 +39,8 @@ set_directive_pipeline "load/load_pred"
 # set_directive_array_map -instance ALL -mode horizontal compute X_pred
 # set_directive_array_map -instance ALL -mode horizontal compute P_pred
 
+# set_directive_array_partition -type cyclic -factor 2 -dim 2 compute S
+# set_directive_array_partition -type cyclic -factor 2 -dim 2 compute S_inv
+# set_directive_array_partition -type block -factor 4 -dim 1 compute S_inv
+# set_directive_array_map -instance RS -mode horizontal compute R
+# set_directive_array_map -instance RS -mode horizontal compute S_inv

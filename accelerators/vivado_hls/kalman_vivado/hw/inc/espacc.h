@@ -85,6 +85,9 @@ void top(dma_word_t *out, dma_word_t *in1,
 void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 	     word_t _outbuff[SIZE_OUT_CHUNK_DATA]);
 
+template<unsigned DIM>
+int inverse(float new_mat[DIM][DIM], float out[DIM][DIM]);
+
 //Traits
 struct TRAITS_A:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,

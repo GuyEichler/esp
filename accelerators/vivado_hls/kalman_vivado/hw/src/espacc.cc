@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "../inc/espacc_config.h"
 #include "../inc/espacc.h"
+#include "../inc/espacc_functions.h"
 #include "hls_stream.h"
 #include "hls_math.h"
 #include <cstring>
@@ -324,6 +325,8 @@ compute_data:
                 word_t tmp = inter2[i][j];
                 inter2[i][j] = tmp + Q_kal[i][j];
             }
+            else
+                inter2[i][j] = 0.0;
         }
 
 #ifndef __SYNTHESIS__
@@ -367,15 +370,30 @@ compute_data:
             {
                 S[i][j] = 1.0;
             }
+            else
+                S[i][j] = 0.0;
         }
 
     //Compute S^-1 = S_inv - QR inverse
     word_t S_inv[Z_MAX][Z_MAX];
     int inv_ok = 0;
 
+    //Initialize S_inv as Identity
+    LOOP_S_inv_1:for(int i = 0; i < Z_MAX; i++)
+    LOOP_S_inv_2:for(int j = 0; j < Z_MAX; j++)
+        {
+            if(i == j)//(i >= z_dim )
+            {
+                S_inv[i][j] = 1.0;
+            }
+            else
+                S_inv[i][j] = 0.0;
+        }
+
     //Use QR decomposition to compute inverse
-    hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
+    //hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
     //hls::qr_inverse<Z_MAX,word_t,word_t>(S,S_inv,inv_ok);
+    inv_ok = inverse<Z_MAX>(S, S_inv);
 
 #ifndef __SYNTHESIS__
     printf("inv_ok = %d\n", inv_ok);
@@ -437,6 +455,8 @@ compute_data:
             word_t tmp = Y[i][0];
             Y[i][0] = Z[0][i] - tmp;
         }
+        else
+            Y[i][0] = 0.0;
     }
 
     //Compute final prediction state X_pred = F * X + K * Y
@@ -466,6 +486,8 @@ compute_data:
             word_t tmp2 = inter6[0][i];
             X_pred[0][i] = tmp2 + tmp;
         }
+        else
+            X_pred[0][i] = 0.0;
     }
 
 #ifndef __SYNTHESIS__
@@ -501,6 +523,8 @@ compute_data:
                 else
                     inter1[i][j] = 0 - tmp;
             }
+            else
+                inter1[i][j] = 0;
         }
 
     //Compute P_pred = inter7 * inter2
@@ -649,3 +673,4 @@ batching:
         // }
     }
 }
+

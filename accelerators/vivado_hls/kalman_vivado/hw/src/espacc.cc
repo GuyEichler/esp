@@ -10,8 +10,8 @@ void load(word_t Z[1][Z_MAX],
           word_t X[1][X_MAX],
           word_t P[X_MAX][X_MAX],
           word_t F[X_MAX][X_MAX],
-          word_t Q[X_MAX][X_MAX],
-          word_t R[Z_MAX][Z_MAX],
+          word_t Q_kal[X_MAX][X_MAX],
+          word_t R_kal[Z_MAX][Z_MAX],
           word_t H[Z_MAX][X_MAX],
           word_t X_pred[1][X_MAX],
           word_t P_pred[X_MAX][X_MAX],
@@ -75,7 +75,7 @@ load_data:
 #endif
 
     for (unsigned i = 0; i < dma_length; i++) {
-#pragma HLS loop_tripcount max=164096
+#pragma HLS loop_tripcount max=14079
 
     load_label0:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
             // _inbuff[i * VALUES_PER_WORD + j] = in1[dma_index + i].word[j];
@@ -116,7 +116,7 @@ load_data:
             }
             else if (total_index < R_index){//Q
                 col_index = total_index - Q_index - row*x_dim;
-                Q[row][col_index] = tmp[j];
+                Q_kal[row][col_index] = tmp[j];
                 if(col_index == x_dim - 1)
                     row++;
                 if(row == x_dim)
@@ -124,7 +124,7 @@ load_data:
             }
             else if (total_index < H_index){//R
                 col_index = total_index - R_index - row*z_dim;
-                R[row][col_index] = tmp[j];
+                R_kal[row][col_index] = tmp[j];
                 if(col_index == z_dim - 1)
                     row++;
                 if(row == z_dim)
@@ -217,7 +217,7 @@ store_data:
     int row = 0;
 
     for (unsigned i = 0; i < dma_length; i++) {
-#pragma HLS loop_tripcount max=42
+#pragma HLS loop_tripcount max=21
 
     store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
 	    out[dma_index + i].word[j] = _outbuff[i * VALUES_PER_WORD + j];
@@ -263,8 +263,8 @@ void compute(word_t Z[1][Z_MAX],
              word_t X[1][X_MAX],
              word_t P[X_MAX][X_MAX],
              word_t F[X_MAX][X_MAX],
-             word_t Q[X_MAX][X_MAX],
-             word_t R[Z_MAX][Z_MAX],
+             word_t Q_kal[X_MAX][X_MAX],
+             word_t R_kal[Z_MAX][Z_MAX],
              word_t H[Z_MAX][X_MAX],
              //word_t _inbuff[SIZE_IN_CHUNK_DATA],
              /* <<--compute-params-->> */
@@ -322,7 +322,7 @@ compute_data:
             if(i < x_dim && j < x_dim)
             {
                 word_t tmp = inter2[i][j];
-                inter2[i][j] = tmp + Q[i][j];
+                inter2[i][j] = tmp + Q_kal[i][j];
             }
         }
 
@@ -361,7 +361,7 @@ compute_data:
             if(i < z_dim && j < z_dim)
             {
                 word_t tmp = S[i][j];
-                S[i][j] = tmp + R[i][j];
+                S[i][j] = tmp + R_kal[i][j];
             }
             else if(i == j)//(i >= z_dim )
             {
@@ -375,6 +375,7 @@ compute_data:
 
     //Use QR decomposition to compute inverse
     hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
+    //hls::qr_inverse<Z_MAX,word_t,word_t>(S,S_inv,inv_ok);
 
 #ifndef __SYNTHESIS__
     printf("inv_ok = %d\n", inv_ok);
@@ -411,7 +412,7 @@ compute_data:
 #endif
 
     //Compute Y = Z - (H * F * X)
-    word_t inter5[Z_MAX][X_MAX];//Reuse inter3
+    //word_t inter5[Z_MAX][X_MAX];//Reuse inter3
     word_t Y[Z_MAX][1];
 
     //Compute inter5 = H * F
@@ -419,14 +420,14 @@ compute_data:
                              Z_MAX, X_MAX, X_MAX, X_MAX,
                              Z_MAX, X_MAX,
                              TRAITS_C,
-                             word_t, word_t> (H, F, inter5);
+                             word_t, word_t> (H, F, inter3);
 
     //Compute Y = inter5 * X
     hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
                              Z_MAX, X_MAX, 1, X_MAX,
                              Z_MAX, 1,
                              TRAITS_F,
-                             word_t, word_t> (inter5, X, Y);
+                             word_t, word_t> (inter3, X, Y);
 
     //Compute Y = Z - Y
     LOOP_Y:for(int i = 0; i < Z_MAX; i++)
@@ -474,14 +475,14 @@ compute_data:
 
     //Compute final prediction state covariance P_pred = (I - K * H) * inter2
     //static word_t P_pred[X_MAX][X_MAX];//Set as PLMs from top
-    word_t inter7[X_MAX][X_MAX];// Reuse inter1
+    //word_t inter7[X_MAX][X_MAX];// Reuse inter1
 
     //Compute inter7 = K * H
     hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
                              X_MAX, Z_MAX, Z_MAX, X_MAX,
                              X_MAX, X_MAX,
                              TRAITS_I,
-                             word_t, word_t> (K, H, inter7);
+                             word_t, word_t> (K, H, inter1);
 
 #ifndef __SYNTHESIS__
     // printf("inter7 = \n");
@@ -494,11 +495,11 @@ compute_data:
         {
             if(i < x_dim && j < x_dim)
             {
-                word_t tmp = inter7[i][j];
+                word_t tmp = inter1[i][j];
                 if(i == j)
-                    inter7[i][j] = 1 - tmp;
+                    inter1[i][j] = 1 - tmp;
                 else
-                    inter7[i][j] = 0 - tmp;
+                    inter1[i][j] = 0 - tmp;
             }
         }
 
@@ -507,7 +508,7 @@ compute_data:
                              X_MAX, X_MAX, X_MAX, X_MAX,
                              X_MAX, X_MAX,
                              TRAITS_A,
-                             word_t, word_t> (inter7, inter2, P_pred);
+                             word_t, word_t> (inter1, inter2, P_pred);
 
 #ifndef __SYNTHESIS__
     // printf("P_pred = \n");
@@ -566,8 +567,8 @@ void top(dma_word_t *out, dma_word_t *in1,
          static word_t X[1][X_MAX];
          static word_t P[X_MAX][X_MAX];
          static word_t F[X_MAX][X_MAX];
-         static word_t Q[X_MAX][X_MAX];
-         static word_t R[Z_MAX][Z_MAX];
+         static word_t Q_kal[X_MAX][X_MAX];
+         static word_t R_kal[Z_MAX][Z_MAX];
          static word_t H[Z_MAX][X_MAX];
 
          static word_t _outbuff[SIZE_OUT_CHUNK_DATA];
@@ -589,8 +590,8 @@ batching:
              X,
              P,
              F,
-             Q,
-             R,
+             Q_kal,
+             R_kal,
              H,
              X_pred,
              P_pred,
@@ -607,8 +608,8 @@ batching:
                 X,
                 P,
                 F,
-                Q,
-                R,
+                Q_kal,
+                R_kal,
                 H,
                 //_inbuff,
                 /* <<--args-->> */

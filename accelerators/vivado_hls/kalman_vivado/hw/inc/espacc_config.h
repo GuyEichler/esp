@@ -17,6 +17,6 @@
 
 #define SIZE_IN_CHUNK_DATA 328192
 
-#define SIZE_OUT_CHUNK_DATA 65792
+#define SIZE_OUT_CHUNK_DATA 42 //65792
 
 #endif

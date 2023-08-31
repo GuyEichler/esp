@@ -108,7 +108,7 @@ struct TRAITS_C:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	Z_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -117,7 +117,7 @@ struct TRAITS_D:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	Z_MAX,X_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -126,7 +126,7 @@ struct TRAITS_E:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	X_MAX,Z_MAX,Z_MAX,Z_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -135,7 +135,7 @@ struct TRAITS_F:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	Z_MAX,X_MAX,1,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -144,7 +144,7 @@ struct TRAITS_G:
 	hls::matrix_multiply_traits<hls::Transpose,hls::Transpose,
 	Z_MAX,1,X_MAX,Z_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -162,7 +162,7 @@ struct TRAITS_I:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	X_MAX,Z_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -171,7 +171,7 @@ struct TRAITS_J:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	X_MAX,X_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -184,30 +184,35 @@ struct MY_CONFIG : INV_CFG {
 		hls::qrf_traits<Z_MAX,
 		Z_MAX,
 		word_t,
-		INV_CFG::InternalType> {
-		/* word_t> { */
+		/* INV_CFG::InternalType> { */
+		word_t> {
 		static const int ARCH = 0;
+		static const int UPDATE_II = 1;
 	};
 	struct BACK_SUB_CONFIG :
 		hls::back_substitute_traits<Z_MAX,
-		INV_CFG::InternalType,
-		INV_CFG::InternalType> {
-		/* word_t, */
-		/* word_t> { */
-		static const int INNER_II = 2;
-		static const int DIAG_II = 2;
+		/* INV_CFG::InternalType, */
+		/* INV_CFG::InternalType> { */
+		word_t,
+		word_t> {
+                //static const int ARCH = 1;
+		static const int INNER_II = 1;
+		static const int DIAG_II = 1;
 	};
 	struct MULTIPLIER_CONFIG :
 		hls::matrix_multiply_traits<hls::NoTranspose,
-		hls::ConjugateTranspose,
+		/* hls::ConjugateTranspose, */
+		hls::NoTranspose,
 		Z_MAX,
 		Z_MAX,
 		Z_MAX,
 		Z_MAX,
-		INV_CFG::InternalType,
-		/* word_t, */
+		/* INV_CFG::InternalType, */
+		word_t,
 		word_t> {
-		static const int INNER_II = 2;
+                static const int ARCH = 0;
+                static const int INNER_II = 1;
+                //static const int UNROLL_FACTOR = 4;
 	};
 };
 

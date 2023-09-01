@@ -10,15 +10,16 @@
 #include <esp_probe.h>
 #include <fixed_point.h>
 
-#include "A_array.h"
-#include "H_array.h"
-#include "W_array.h"
-#include "Q_array.h"
-#include "initial_state_array.h"
-#include "measurements_array.h"
-#include "prediction_array.h"
-#include "real_array.h"
-#include "P_array.h"
+/* #include "A_array.h" */
+/* #include "H_array.h" */
+/* #include "W_array.h" */
+/* #include "Q_array.h" */
+/* #include "initial_state_array.h" */
+/* #include "measurements_array.h" */
+/* #include "prediction_array.h" */
+/* #include "real_array.h" */
+/* #include "P_array.h" */
+#include "small.h"
 
 //typedef int32_t token_t;
 typedef float token_t;
@@ -32,9 +33,9 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 #define SLD_KALMAN 0x049
 #define DEV_NAME "sld,kalman_vivado"
 
-#define STATES 6
-#define NEURONS 164
-#define TIME_STAMPS 10
+#define STATES 2
+#define NEURONS 1
+#define TIME_STAMPS 1
 
 /* <<--params-->> */
 const int32_t iter = TIME_STAMPS;
@@ -71,8 +72,8 @@ static unsigned mem_size;
 
 static int validate_buf(token_t *out, token_t *gold)
 {
-	int i;
-	int j;
+	unsigned i;
+	unsigned j;
 	unsigned errors = 0;
 	float MSE = 0.0;
 
@@ -83,30 +84,42 @@ static int validate_buf(token_t *out, token_t *gold)
 			token_t gold_val = gold[i * out_words_adj + j];
 			token_t acc_val = out[i * out_words_adj + j];
 
-			token_t diff = gold_val - acc_val;
+			int32_t acc_fixed = float_to_fixed32(acc_val, 3);
+			int32_t gold_fixed = float_to_fixed32(gold_val, 3);
+
+			token_t diff;
 			if(gold_val < acc_val)
-				diff = diff * (-1);
+				diff = acc_val - gold_val;
+			else
+				diff = gold_val - acc_val;
+
 			MSE += diff * diff;
 
+			int32_t diff_fixed = float_to_fixed32(diff, 3);
+
 			if(j < x_dim)
-				printf("X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
-			/* else */
-			/* 	printf("P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff); */
+				printf("NOT ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
+			else
+				printf("NOT ERROR: P Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 
 			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
 			{
-				if(diff/gold_val > 0.5){
+				if(diff / gold_val > 0.5){
 					if(j < x_dim)
-						printf("X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+						printf("ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 					else
-						printf("P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+						printf("ERROR: P Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
+
 					errors++;
 				}
 			}
 		}
 
 	MSE /= ((x_dim + x_dim * x_dim) * iter);
-	printf("Output MSE: %f", MSE);
+	int32_t MSE_fixed = float_to_fixed32(MSE, 2);
+	printf("Output MSE: %d \n", MSE);
+
+	printf("Sum of errors is %u \n", errors);
 
 	return errors;
 }
@@ -129,11 +142,12 @@ static void init_buf (token_t *in, token_t * gold)
 		for(; j < z_dim; j++)
 		{
 			if(i == 0)
-				in[i * in_words_adj + j] = (token_t) measurements[NEURONS * (i+1) + j];
+				in[i * in_words_adj + j] = (token_t) measurements[NEURONS * i + j];
 			else
-				in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i+1) + j];
+				in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * i + j];
+			int32_t val = float_to_fixed32(measurements[NEURONS * i + j], 3);
 			// if(i == 3)
-			//     printf("Value of Z = %f index %d\n", measurements[NEURONS * (i+1) + j], in_words_adj + (i-1) * in_words_adj_z + j);
+			printf("Value of Z = %d index %d \n", val, i * in_words_adj + j);
 		}
 
 		if(i == 0) //only for first iteration
@@ -185,7 +199,7 @@ static void init_buf (token_t *in, token_t * gold)
 		for(j = 0; j < x_dim + x_dim * x_dim; j++)
 		{
 			if(j < x_dim)
-				gold[i * out_words_adj + j] = (token_t) prediction[STATES * (i+1) + j];
+				gold[i * out_words_adj + j] = (token_t) prediction[STATES * i + j];
 			else
 			{
 				gold[i * out_words_adj + j] = (token_t) P_flat[i * x_dim * x_dim + (j - x_dim)];

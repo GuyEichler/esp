@@ -22,34 +22,46 @@ void load(word_t Z[1][Z_MAX],
           const unsigned iter,
           const unsigned x_dim,
           const unsigned z_dim,
-	  dma_info_t &load_ctrl, int batch)
+	  dma_info_t &load_ctrl, unsigned batch, bool &enable)
 {
 load_data:
 
+    // unsigned length_raw = z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim;
     unsigned total_length =
         round_up(z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim, VALUES_PER_WORD);
 
     unsigned z_length = round_up(z_dim, VALUES_PER_WORD);
 
     //const unsigned index = 0; //length * (batch * 1 + chunk);
-    const unsigned length_Z = z_dim;
-    const unsigned length_X = x_dim;
-    const unsigned length_P = x_dim * x_dim;
-    const unsigned length_F = x_dim * x_dim;
-    const unsigned length_Q = x_dim * x_dim;
-    const unsigned length_R = z_dim * z_dim;
-    const unsigned length_H = z_dim * x_dim;
+    unsigned length_Z = z_dim;
+    unsigned length_X = x_dim;
+    unsigned length_P = x_dim * x_dim;
+    unsigned length_F = x_dim * x_dim;
+    unsigned length_Q = x_dim * x_dim;
+    unsigned length_R = z_dim * z_dim;
+    unsigned length_H = z_dim * x_dim;
 
-    //Check if we're in first iteraion or not
-    unsigned batch_0 = batch == 0 ? 0 : 1;
-    unsigned batch_1 = batch > 1 ? (batch - 1) : 0;
-    unsigned batch_total = batch == 0 ? 1 : 0;
+    // //Check if we're in first iteraion or not
+    // unsigned batch_0 = batch == 0 ? 0 : 1;
+    // unsigned batch_1 = batch > 1 ? (batch - 1) : 0;
+    // unsigned batch_total = batch == 0 ? 1 : 0;
 
-    const unsigned index = total_length * batch_0;
-    const unsigned index_z = z_length * batch_1;
-    const unsigned length = total_length * batch_total + z_length * batch_0;
+    // unsigned final_index = 0;// = total_length * batch_0;
+    // //if(batch == 0) final_index = 0;
+    // if (batch > 0) final_index = total_length + z_length * (batch - 1);
+    //else if (batch > 1) final_index = total_length + z_length * (batch - 1);
+    // unsigned index_z;// = z_length * batch_1;
+    // if(batch > 1) index_z = z_length * (batch - 1);
+    // else index_z = 0;
 
-    unsigned Z_index = index + index_z;
+    // const unsigned index = final_index;
+    unsigned index = (batch == 0) ? 0 : (total_length + z_length * (batch - 1));
+    // unsigned length = 0;// = total_length * batch_total + z_length * batch_0;
+    // if(batch == 0) length = total_length;
+    // else length = z_length;
+    unsigned length = (batch == 0) ? total_length : z_length;
+
+    unsigned Z_index = index;// + index_z;
     unsigned X_index = Z_index + length_Z;
     unsigned P_index = X_index + length_X;
     unsigned F_index = P_index + length_P;
@@ -63,7 +75,9 @@ load_data:
     word_t dummy;
 
     unsigned dma_length = length / VALUES_PER_WORD;
-    unsigned dma_index = (index + index_z) / VALUES_PER_WORD;
+    unsigned dma_index = index / VALUES_PER_WORD;
+
+    if(enable){
 
     load_ctrl.index = dma_index;
     load_ctrl.length = dma_length;
@@ -146,7 +160,7 @@ load_data:
     	}
     }
 
-    if(batch_total == 0)
+    if(batch != 0)
     {
         //Copy X/P_pred into X/P in case we have more than one iteration
         row = 0;
@@ -180,6 +194,7 @@ load_data:
             }
         }
     }
+    }
 
 }
 
@@ -191,7 +206,7 @@ void store(// word_t X_pred[1][X_MAX],
            const unsigned iter,
            const unsigned x_dim,
            const unsigned z_dim,
-	   dma_info_t &store_ctrl, int batch)
+	   dma_info_t &store_ctrl, unsigned batch, bool &enable)
 {
 store_data:
 
@@ -211,11 +226,13 @@ store_data:
     printf("dma_index %d\n", dma_index);
 #endif
 
+    if(enable){
+
     store_ctrl.index = dma_index;
     store_ctrl.length = dma_length;
     store_ctrl.size = SIZE_WORD_T;
 
-    int row = 0;
+    // int row = 0;
 
     for (unsigned i = 0; i < dma_length; i++) {
 #pragma HLS loop_tripcount max=21
@@ -256,6 +273,7 @@ store_data:
 //             // printf("out[%d].word[%d] = %f\n", i+dma_index, j, _outbuff[i * VALUES_PER_WORD + j]);
 // #endif
 	}
+    }
     }
 }
 
@@ -614,6 +632,8 @@ void top(dma_word_t *out, dma_word_t *in1,
          static word_t X_pred[1][X_MAX];
          static word_t P_pred[X_MAX][X_MAX];
 
+         bool enable = false;
+
     // Batching
 batching:
     for (unsigned b = 0; b < iter; b++)
@@ -623,6 +643,10 @@ batching:
     go:
         // for (int c = 0; c < 1; c++)
         // {
+        unsigned curr_b = b;
+
+        if(curr_b == 0)
+            enable = true;
 
         load(Z,
              X,
@@ -639,7 +663,7 @@ batching:
              iter,
              x_dim,
              z_dim,
-             load_ctrl, b);
+             load_ctrl, curr_b, enable);
 
         // if(b == 0)
         compute(Z,
@@ -682,7 +706,7 @@ batching:
               iter,
               x_dim,
               z_dim,
-              store_ctrl, b);
+              store_ctrl, curr_b, enable);
 
         // }
     }

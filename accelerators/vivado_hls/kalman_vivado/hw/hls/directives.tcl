@@ -13,7 +13,7 @@ set_directive_interface -mode ap_none "top" conf_info_z_dim
 set_directive_array_partition -type cyclic -factor 2 -dim 1 "top" _outbuff
 
 set_directive_array_partition -type complete -dim 0 "load" tmp
-set_directive_pipeline "load/load_label1"
+# set_directive_pipeline "load/load_label1"
 
 # set_directive_pipeline "compute"
 # set_directive_unroll -off "compute/LOOP_SR_1"

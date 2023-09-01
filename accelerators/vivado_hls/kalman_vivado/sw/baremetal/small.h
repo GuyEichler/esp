@@ -1,0 +1,9 @@
+float initial[] = {0.0, 1.0};
+float P_initial[] = {1.0, 0.0, 0.0, 1.0};
+float A[] = {1.0, 1.0, 0.0, 1.0};
+float W[] = {0.5, 0.0, 0.0, 0.5};
+float Q[] = {0.1};
+float H[] = {1.0, 0.0};
+float measurements[] = {1.2};
+float prediction[] = {1.16667, 1.0};
+float P_flat[] = {0.0833333, 0.0, 0.0, 0.5};

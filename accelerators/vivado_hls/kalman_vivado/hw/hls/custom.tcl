@@ -11,7 +11,7 @@ set word_widths {32}
 # set dataype "fl32" if both input and output are float
 # set dataype "fl32in" if only the input is float
 # set dataype "fl32out" if only the output is float
-set datatype ""
+set datatype "fl32"
 
 # Clock period
 

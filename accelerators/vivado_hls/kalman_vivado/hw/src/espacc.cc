@@ -289,7 +289,9 @@ compute_data:
     // unsigned ZZ_size = z_dim*z_dim;
     // unsigned ZX_size = z_dim*x_dim;
 
-    word_t inter1[X_MAX][X_MAX];
+    word_t inter1[X_MAX][X_MAX];//Define inter1 with the size of inter3 to be
+    //able to share resources
+    // word_t inter1[Z_MAX][X_MAX];
     word_t inter2[X_MAX][X_MAX];
 
     //Compute inter1 = F x P
@@ -335,7 +337,7 @@ compute_data:
 #endif
 
     //Compute S = H * inter2 * H.T + R
-    word_t inter3[Z_MAX][X_MAX];
+    word_t inter3[Z_MAX][X_MAX];//Reuse inter 1
     word_t S[Z_MAX][Z_MAX];
 
     //Compute inter3 = H x inter2
@@ -366,10 +368,10 @@ compute_data:
                 word_t tmp = S[i][j];
                 S[i][j] = tmp + R_kal[i][j];
             }
-            else if(i == j)//(i >= z_dim )
-            {
-                S[i][j] = 1.0;
-            }
+            // else if(i == j)//(i >= z_dim )
+            // {
+            //     S[i][j] = 1.0;
+            // }
             else
                 S[i][j] = 0.0;
         }
@@ -382,7 +384,7 @@ compute_data:
     LOOP_S_inv_1:for(int i = 0; i < Z_MAX; i++)
     LOOP_S_inv_2:for(int j = 0; j < Z_MAX; j++)
         {
-            if(i == j)//(i >= z_dim )
+            if(i == j && i < z_dim)
             {
                 S_inv[i][j] = 1.0;
             }
@@ -393,7 +395,7 @@ compute_data:
     //Use QR decomposition to compute inverse
     //hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
     //hls::qr_inverse<Z_MAX,word_t,word_t>(S,S_inv,inv_ok);
-    inv_ok = inverse<Z_MAX>(S, S_inv);
+    inv_ok = inverse<Z_MAX>(S, S_inv, z_dim);
 
 #ifndef __SYNTHESIS__
     printf("inv_ok = %d\n", inv_ok);
@@ -402,27 +404,39 @@ compute_data:
 #endif
 
     //Compute K = inter2 * H.T * S_inv
-    word_t inter4[X_MAX][Z_MAX];
+    //word_t inter4[X_MAX][Z_MAX];//Reuse inter3 by changing computation
     word_t K[X_MAX][Z_MAX];
 
-    //Compute inter4 = inter2 * H.T
+    // //Compute inter4 = inter2 * H.T
+    // hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
+    //                          X_MAX, X_MAX, Z_MAX, X_MAX,
+    //                          X_MAX, Z_MAX,
+    //                          TRAITS_J,
+    //                          word_t, word_t> (inter2, H, inter4);
+    //Compute inter4.T = inter3 = H * inter2.T
     hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
-                             X_MAX, X_MAX, Z_MAX, X_MAX,
-                             X_MAX, Z_MAX,
+                             Z_MAX, X_MAX, X_MAX, X_MAX,
+                             Z_MAX, X_MAX,
                              TRAITS_J,
-                             word_t, word_t> (inter2, H, inter4);
+                             word_t, word_t> (H, inter2, inter3);
 
 #ifndef __SYNTHESIS__
     // printf("inter4 = \n");
     // hls::print_matrix<X_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])inter4, "   ");
 #endif
 
-    //Compute K = inter4 * S_inv
-    hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
-                             X_MAX, Z_MAX, Z_MAX, Z_MAX,
+    // //Compute K = inter4 * S_inv
+    // hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
+    //                          X_MAX, Z_MAX, Z_MAX, Z_MAX,
+    //                          X_MAX, Z_MAX,
+    //                          TRAITS_E,
+    //                          word_t, word_t> (inter4, S_inv, K);
+    //Compute K = inter4 * S_inv = inter3.T * S_inv
+    hls::matrix_multiply_top<hls::Transpose, hls::NoTranspose,
+                             Z_MAX, X_MAX, Z_MAX, Z_MAX,
                              X_MAX, Z_MAX,
                              TRAITS_E,
-                             word_t, word_t> (inter4, S_inv, K);
+                             word_t, word_t> (inter3, S_inv, K);
 
 #ifndef __SYNTHESIS__
     // printf("K = \n");
@@ -461,14 +475,14 @@ compute_data:
 
     //Compute final prediction state X_pred = F * X + K * Y
     //static word_t X_pred[1][X_MAX];//Set as PLMs from top
-    word_t inter6[1][X_MAX];
+    //word_t inter6[1][X_MAX];//Reuse inter1
 
     //Compute inter6 = K * Y
     hls::matrix_multiply_top<hls::Transpose, hls::Transpose,
                              Z_MAX, 1, X_MAX, Z_MAX,
                              1, X_MAX,
                              TRAITS_G,
-                             word_t, word_t> (Y, K, inter6);
+                             word_t, word_t> (Y, K, inter1);
 
     //Compute X_pred = F * X (Compute X.T * F.T)
     hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
@@ -483,7 +497,7 @@ compute_data:
         if(i < x_dim)
         {
             word_t tmp = X_pred[0][i];
-            word_t tmp2 = inter6[0][i];
+            word_t tmp2 = inter1[0][i];
             X_pred[0][i] = tmp2 + tmp;
         }
         else

@@ -44,3 +44,11 @@ set_directive_pipeline -II 2 "compute/LOOP_SR_2"
 # set_directive_array_partition -type block -factor 4 -dim 1 compute S_inv
 # set_directive_array_map -instance RS -mode horizontal compute R
 # set_directive_array_map -instance RS -mode horizontal compute S_inv
+
+# set_directive_array_map -instance inter13 -mode horizontal compute inter3
+# set_directive_array_map -instance inter13 -mode horizontal compute inter1
+# set_directive_array_map -instance inter26 -mode horizontal compute inter2
+# set_directive_array_map -instance inter26 -mode horizontal compute inter6
+
+# set_directive_array_map -instance inter1346 -mode horizontal compute inter16
+# set_directive_array_map -instance inter1346 -mode horizontal compute inter34

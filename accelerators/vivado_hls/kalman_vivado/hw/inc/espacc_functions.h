@@ -3,8 +3,9 @@
 
 //helper functions
 template<unsigned DIM>
-int inverse(word_t new_mat[DIM][DIM], word_t out[DIM][DIM])
+int inverse(word_t new_mat[DIM][DIM], word_t out[DIM][DIM], unsigned real_dim)
 {
+//#pragma HLS inline
 inverse_func:
 
     int i,j,k;
@@ -32,10 +33,14 @@ inverse_func:
     else
     {
         /* Applying Gauss Jordan Elimination */
-        main_loop:for(i = 0; i < DIM; i++)
+        /* main_loop:for(i = 0; i < DIM; i++) */
+        main_loop:for(i = 0; i < real_dim; i++)
         {
-	    loop_1:for(j = 0; j < DIM; j++)
+#pragma HLS loop_tripcount max=164
+	    /* loop_1:for(j = 0; j < DIM; j++) */
+	    loop_1:for(j = 0; j < real_dim; j++)
             {
+#pragma HLS loop_tripcount max=164
                 if(i != j)
                 {
                     word_t ratio;
@@ -45,10 +50,13 @@ inverse_func:
                     ratio = new_ji / new_ii;
                     /* ratio = new_ji * new_ii_inv; */
 
-		    word_t new_jj = new_mat[j][j];
-		    word_t new_jj_inv;
-		    if(i == DIM - 1)
+		    word_t new_jj = 0.0; //new_mat[j][j];
+		    word_t new_jj_inv = 0.0;
+
+		    /* if(i == DIM - 1) */
+		    if(i == real_dim - 1)
 		    {
+			new_jj = new_mat[j][j];
 		        word_t new_ij = new_mat[i][j];
 		        word_t ratio_new_ij = ratio * new_ij;
 			word_t new_val = new_jj - ratio_new_ij;
@@ -67,8 +75,10 @@ inverse_func:
 
 
 
-		    loop_2:for(k = 0; k < DIM; k++)
+		    /* loop_2:for(k = 0; k < DIM; k++) */
+		    loop_2:for(k = 0; k < real_dim; k++)
                     {
+#pragma HLS loop_tripcount max=164
                     #pragma HLS PIPELINE II=2
 
 			word_t new_jk = new_mat[j][k];
@@ -80,7 +90,8 @@ inverse_func:
 			/* out[j][k] = out_jk - ratio*out_ik; */
 			word_t out_jk_val = out_jk - ratio*out_ik;
 
-                        if(i == DIM-1){
+                        /* if(i == DIM-1){ */
+                        if(i == real_dim - 1){
                             /* if(k == 0){//Calc the diagonal element first */
                             /*     /\* word_t new_jj = new_mat[j][j]; *\/ */
                             /*     //new_mat[j][j] = new_jj - ratio_new_ij; */
@@ -170,12 +181,17 @@ inverse_func:
 
 
 	/* Row Operation to Make Principal Diagonal to 1 */
-        loop_3:for(i = 0; i < DIM; i++)
+        /* loop_3:for(i = 0; i < DIM; i++) */
+        loop_3:for(i = 0; i < real_dim; i++)
         {
+#pragma HLS loop_tripcount max=164
         #pragma HLS PIPELINE
-	    word_t out_i = out[DIM-1][i];
-	    word_t new_last = new_mat[DIM-1][DIM-1];
-            out[DIM-1][i] = out_i / new_last;
+	    /* word_t out_i = out[DIM-1][i]; */
+	    /* word_t new_last = new_mat[DIM-1][DIM-1]; */
+            /* out[DIM-1][i] = out_i / new_last; */
+	    word_t out_i = out[real_dim-1][i];
+	    word_t new_last = new_mat[real_dim-1][real_dim-1];
+            out[real_dim-1][i] = out_i / new_last;
         }
 
     }

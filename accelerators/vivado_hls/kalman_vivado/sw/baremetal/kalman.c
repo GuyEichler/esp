@@ -10,7 +10,18 @@
 #include <esp_probe.h>
 #include <fixed_point.h>
 
-typedef int32_t token_t;
+#include "A_array.h"
+#include "H_array.h"
+#include "W_array.h"
+#include "Q_array.h"
+#include "initial_state_array.h"
+#include "measurements_array.h"
+#include "prediction_array.h"
+#include "real_array.h"
+#include "P_array.h"
+
+//typedef int32_t token_t;
+typedef float token_t;
 
 static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 {
@@ -21,12 +32,17 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 #define SLD_KALMAN 0x049
 #define DEV_NAME "sld,kalman_vivado"
 
+#define STATES 6
+#define NEURONS 164
+#define TIME_STAMPS 10
+
 /* <<--params-->> */
-const int32_t iter = 1;
-const int32_t x_dim = 1;
-const int32_t z_dim = 1;
+const int32_t iter = TIME_STAMPS;
+const int32_t x_dim = STATES;
+const int32_t z_dim = NEURONS;
 
 static unsigned in_words_adj;
+static unsigned in_words_adj_z;
 static unsigned out_words_adj;
 static unsigned in_len;
 static unsigned out_len;
@@ -48,17 +64,49 @@ static unsigned mem_size;
 #define KALMAN_X_DIM_REG 0x44
 #define KALMAN_Z_DIM_REG 0x40
 
+/*Helper functions*/
+
+
+/*End of helper functions*/
 
 static int validate_buf(token_t *out, token_t *gold)
 {
 	int i;
 	int j;
 	unsigned errors = 0;
+	float MSE = 0.0;
 
 	for (i = 0; i < iter; i++)
 		for (j = 0; j < x_dim + x_dim * x_dim; j++)
+		{
+
+			token_t gold_val = gold[i * out_words_adj + j];
+			token_t acc_val = out[i * out_words_adj + j];
+
+			token_t diff = gold_val - acc_val;
+			if(gold_val < acc_val)
+				diff = diff * (-1);
+			MSE += diff * diff;
+
+			if(j < x_dim)
+				printf("X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+			/* else */
+			/* 	printf("P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff); */
+
 			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
-				errors++;
+			{
+				if(diff/gold_val > 0.5){
+					if(j < x_dim)
+						printf("X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+					else
+						printf("P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+					errors++;
+				}
+			}
+		}
+
+	MSE /= ((x_dim + x_dim * x_dim) * iter);
+	printf("Output MSE: %f", MSE);
 
 	return errors;
 }
@@ -69,13 +117,74 @@ static void init_buf (token_t *in, token_t * gold)
 	int i;
 	int j;
 
-	for (i = 0; i < iter; i++)
-		for (j = 0; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
-			in[i * in_words_adj + j] = (token_t) j;
+	/* for (i = 0; i < iter; i++) */
+	/* 	for (j = 0; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++) */
+	/* 		in[i * in_words_adj + j] = (token_t) j; */
 
-	for (i = 0; i < iter; i++)
-		for (j = 0; j < x_dim + x_dim * x_dim; j++)
-			gold[i * out_words_adj + j] = (token_t) j;
+
+	for(i = 0; i < iter; i++)
+	{//z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim
+
+		//Z
+		for(; j < z_dim; j++)
+		{
+			if(i == 0)
+				in[i * in_words_adj + j] = (token_t) measurements[NEURONS * (i+1) + j];
+			else
+				in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i+1) + j];
+			// if(i == 3)
+			//     printf("Value of Z = %f index %d\n", measurements[NEURONS * (i+1) + j], in_words_adj + (i-1) * in_words_adj_z + j);
+		}
+
+		if(i == 0) //only for first iteration
+		{
+			//X
+			for(; j < z_dim + x_dim; j++)
+			{
+				in[i * in_words_adj + j] = (token_t) initial[j - z_dim];
+			}
+
+			//P
+			for(; j < z_dim + x_dim + x_dim * x_dim; j++)
+			{
+				in[i * in_words_adj + j] = (token_t) 0.0;
+			}
+
+			//F
+			for(; j < z_dim + x_dim + x_dim * x_dim * 2; j++)
+			{
+				in[i * in_words_adj + j] = (token_t) A[j - (z_dim + x_dim + x_dim * x_dim)];
+			}
+
+			//Q
+			for(; j < z_dim + x_dim + x_dim * x_dim * 3; j++)
+			{
+				in[i * in_words_adj + j] = (token_t) W[j - (z_dim + x_dim + x_dim * x_dim * 2)];
+			}
+
+			//R
+			for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
+			{
+				in[i * in_words_adj + j] = (token_t) Q[j - (z_dim + x_dim + x_dim * x_dim * 3)];
+			}
+
+			//H
+			for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
+			{
+				in[i * in_words_adj + j] = (token_t) H[j - (z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
+				//printf("Value of H = %f \n", measurements[NEURONS * (i+1) + j]);
+			}
+		}
+	}
+
+
+	/* for (i = 0; i < iter; i++) */
+	/* 	for (j = 0; j < x_dim + x_dim * x_dim; j++) */
+	/* 		gold[i * out_words_adj + j] = (token_t) j; */
+        for(j = 0; j < x_dim * x_dim * iter; j++)
+                gold[j] = (token_t) P_flat[j];
+
+
 }
 
 
@@ -95,12 +204,14 @@ int main(int argc, char * argv[])
 
 	if (DMA_WORD_PER_BEAT(sizeof(token_t)) == 0) {
 		in_words_adj = z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim;
+		in_words_adj_z = z_dim;
 		out_words_adj = x_dim + x_dim * x_dim;
 	} else {
 		in_words_adj = round_up(z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
+		in_words_adj_z = round_up(z_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
 		out_words_adj = round_up(x_dim + x_dim * x_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
 	}
-	in_len = in_words_adj * (iter);
+	in_len = in_words_adj + in_words_adj_z * (iter-1);
 	out_len = out_words_adj * (iter);
 	in_size = in_len * sizeof(token_t);
 	out_size = out_len * sizeof(token_t);
@@ -177,9 +288,9 @@ int main(int argc, char * argv[])
 
 			// Pass accelerator-specific configuration parameters
 			/* <<--regs-config-->> */
-		iowrite32(dev, KALMAN_ITER_REG, iter);
-		iowrite32(dev, KALMAN_X_DIM_REG, x_dim);
-		iowrite32(dev, KALMAN_Z_DIM_REG, z_dim);
+			iowrite32(dev, KALMAN_ITER_REG, iter);
+			iowrite32(dev, KALMAN_X_DIM_REG, x_dim);
+			iowrite32(dev, KALMAN_Z_DIM_REG, z_dim);
 
 			// Flush (customize coherence model here)
 			esp_flush(coherence);

@@ -144,7 +144,8 @@ int main(int argc, char **argv) {
         Matrix<float, NEURONS, NEURONS> Mat_S = Mat_H * (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
         Matrix<float, STATES, NEURONS> Mat_K = (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * Mat_S.inverse();
         Mat_P = (Mat_I -  Mat_K * Mat_H) * (Mat_F * Mat_P * Mat_F.transpose() + Mat_Q);
-        //std::cout << "Matrix P = " << Mat_P << std::endl;
+        // if(i == 0)
+        //     std::cout << "Matrix P = " << Mat_P << std::endl;
 
         float P_flat[STATES*STATES];
         Map<Matrix<float, STATES, STATES, RowMajor> >(&P_flat[0], Mat_P.rows(), Mat_P.cols()) = Mat_P;

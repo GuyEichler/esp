@@ -35,7 +35,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 
 #define STATES 2
 #define NEURONS 1
-#define TIME_STAMPS 1
+#define TIME_STAMPS 2
 
 /* <<--params-->> */
 const int32_t iter = TIME_STAMPS;
@@ -139,7 +139,7 @@ static void init_buf (token_t *in, token_t * gold)
 	{//z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim
 
 		//Z
-		for(; j < z_dim; j++)
+		for(j = 0; j < z_dim; j++)
 		{
 			if(i == 0)
 				in[i * in_words_adj + j] = (token_t) measurements[NEURONS * i + j];
@@ -147,7 +147,7 @@ static void init_buf (token_t *in, token_t * gold)
 				in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * i + j];
 			int32_t val = float_to_fixed32(measurements[NEURONS * i + j], 3);
 			// if(i == 3)
-			printf("Value of Z = %d index %d \n", val, i * in_words_adj + j);
+			//printf("Value of Z = %d index %d \n", val, i * in_words_adj + j);
 		}
 
 		if(i == 0) //only for first iteration

@@ -6,12 +6,16 @@
 #include "libesp.h"
 #include "kalman_vivado.h"
 
-typedef int32_t token_t;
+typedef float token_t;
+
+#define STATES 6
+#define NEURONS 164
+#define TIME_STAMPS 10
 
 /* <<--params-def-->> */
-#define ITER 1
-#define X_DIM 1
-#define Z_DIM 1
+#define ITER TIME_STAMPS
+#define X_DIM STATES
+#define Z_DIM NEURONS
 
 /* <<--params-->> */
 const int32_t iter = ITER;

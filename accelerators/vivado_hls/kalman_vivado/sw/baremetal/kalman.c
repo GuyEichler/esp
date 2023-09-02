@@ -34,7 +34,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 
 #define STATES 6
 #define NEURONS 164
-#define TIME_STAMPS 10
+#define TIME_STAMPS 2
 
 /* <<--params-->> */
 const int32_t iter = TIME_STAMPS;
@@ -83,30 +83,42 @@ static int validate_buf(token_t *out, token_t *gold)
 			token_t gold_val = gold[i * out_words_adj + j];
 			token_t acc_val = out[i * out_words_adj + j];
 
-			token_t diff = gold_val - acc_val;
+			int32_t acc_fixed = float_to_fixed32(acc_val, 3);
+			int32_t gold_fixed = float_to_fixed32(gold_val, 3);
+
+			token_t diff;
 			if(gold_val < acc_val)
-				diff = diff * (-1);
+				diff = acc_val - gold_val;
+			else
+				diff = gold_val - acc_val;
+
 			MSE += diff * diff;
 
-			if(j < x_dim)
-				printf("X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+			int32_t diff_fixed = float_to_fixed32(diff, 3);
+
+			/* if(j < x_dim) */
+			/* 	printf("NOT ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed); */
 			/* else */
-			/* 	printf("P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff); */
+			/* 	printf("NOT ERROR: P Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed); */
 
 			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
 			{
-				if(diff/gold_val > 0.5){
+				if(diff / gold_val > 0.5){
 					if(j < x_dim)
-						printf("X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+						printf("ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 					else
-						printf("P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+						printf("ERROR: P Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
+
 					errors++;
 				}
 			}
 		}
 
 	MSE /= ((x_dim + x_dim * x_dim) * iter);
-	printf("Output MSE: %f", MSE);
+	int32_t MSE_fixed = float_to_fixed32(MSE, 2);
+	printf("Output MSE: %d \n", MSE);
+
+	printf("Sum of errors is %u \n", errors);
 
 	return errors;
 }
@@ -117,23 +129,21 @@ static void init_buf (token_t *in, token_t * gold)
 	int i;
 	int j;
 
-	/* for (i = 0; i < iter; i++) */
-	/* 	for (j = 0; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++) */
-	/* 		in[i * in_words_adj + j] = (token_t) j; */
-
 
 	for(i = 0; i < iter; i++)
 	{//z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim
 
 		//Z
-		for(; j < z_dim; j++)
+		for(j = 0; j < z_dim; j++)
 		{
 			if(i == 0)
-				in[i * in_words_adj + j] = (token_t) measurements[NEURONS * (i+1) + j];
+				in[j] = (token_t) measurements[NEURONS * (i+1) + j];
 			else
 				in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i+1) + j];
-			// if(i == 3)
-			//     printf("Value of Z = %f index %d\n", measurements[NEURONS * (i+1) + j], in_words_adj + (i-1) * in_words_adj_z + j);
+
+			/* int32_t val = float_to_fixed32(measurements[NEURONS * (i+1) + j], 3); */
+			/* if(i == 1) */
+			/* 	printf("Value of Z = %d index %d\n", val, in_words_adj + (i-1) * in_words_adj_z + j); */
 		}
 
 		if(i == 0) //only for first iteration
@@ -141,37 +151,37 @@ static void init_buf (token_t *in, token_t * gold)
 			//X
 			for(; j < z_dim + x_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) initial[j - z_dim];
+				in[j] = (token_t) initial[j - z_dim];
 			}
 
 			//P
 			for(; j < z_dim + x_dim + x_dim * x_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) 0.0;
+				in[j] = (token_t) 0.0;
 			}
 
 			//F
 			for(; j < z_dim + x_dim + x_dim * x_dim * 2; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) A[j - (z_dim + x_dim + x_dim * x_dim)];
+				in[j] = (token_t) A[j - (z_dim + x_dim + x_dim * x_dim)];
 			}
 
 			//Q
 			for(; j < z_dim + x_dim + x_dim * x_dim * 3; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) W[j - (z_dim + x_dim + x_dim * x_dim * 2)];
+				in[j] = (token_t) W[j - (z_dim + x_dim + x_dim * x_dim * 2)];
 			}
 
 			//R
 			for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) Q[j - (z_dim + x_dim + x_dim * x_dim * 3)];
+				in[j] = (token_t) Q[j - (z_dim + x_dim + x_dim * x_dim * 3)];
 			}
 
 			//H
 			for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) H[j - (z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
+				in[j] = (token_t) H[j - (z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
 				//printf("Value of H = %f \n", measurements[NEURONS * (i+1) + j]);
 			}
 		}

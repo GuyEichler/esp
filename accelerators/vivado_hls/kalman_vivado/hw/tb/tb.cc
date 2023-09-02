@@ -15,6 +15,7 @@
 #include "measurements_array.h"
 #include "prediction_array.h"
 #include "real_array.h"
+#include "P_array.h"
 
 #include <eigen3/Eigen/Dense>
 using namespace Eigen;
@@ -76,8 +77,8 @@ int main(int argc, char **argv) {
                 inbuff[i * in_words_adj + j] = (word_t) measurements[NEURONS * (i+1) + j];
             else
                 inbuff[in_words_adj + (i-1) * in_words_adj_z + j] = (word_t) measurements[NEURONS * (i+1) + j];
-            // if(i == 3)
-            //     printf("Value of Z = %f index %d\n", measurements[NEURONS * (i+1) + j], in_words_adj + (i-1) * in_words_adj_z + j);
+            // if(i == 1)
+            //      printf("Value of Z = %f index %d\n", measurements[NEURONS * (i+1) + j], in_words_adj + (i-1) * in_words_adj_z + j);
         }
 
         if(i == 0) //only for first iteration
@@ -161,6 +162,17 @@ int main(int argc, char **argv) {
         }
 
     }
+
+    // for(int i = 0; i < iter; i++)
+    // for(unsigned j = 0; j < x_dim + x_dim * x_dim; j++)
+    // {
+    //     if(j < x_dim)
+    //         outbuff_gold[i * out_words_adj + j] = (word_t) prediction[STATES * (i+1) + j];
+    //     else
+    //     {
+    //         outbuff_gold[i * out_words_adj + j] = (word_t) P_flat[i * x_dim * x_dim + j - x_dim];
+    //     }
+    // }
 
     // for(int i = 0; i < STATES*STATES; i++)
     //     printf("P_flat[%d] = %.10f\n", i, P_flat[i]);

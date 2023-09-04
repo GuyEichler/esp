@@ -26,7 +26,13 @@ set_directive_inline -recursive "qr_inverse_top"
 set_directive_pipeline "load/load_pred"
 # set_directive_pipeline "compute/LOOP_INT2_2"
 set_directive_pipeline "compute/LOOP_S_inv_2"
-set_directive_pipeline -II 2 "compute/LOOP_SR_2"
+set_directive_pipeline -II 1 "compute/LOOP_SR_2"
+set_directive_dependence -variable S -type inter -dependent false "compute/LOOP_SR_2"
+set_directive_pipeline "compute/LOOP_Y"
+set_directive_pipeline "compute/LOOP_X_PRED"
+set_directive_pipeline "compute/LOOP_INT7_2"
+set_directive_dependence -variable inter7 -type inter -dependent false "compute/LOOP_INT7_2"
+set_directive_pipeline "compute/LOOP_OUT"
 # set_directive_array_partition -type complete -dim 2 "compute" inter2
 # set_directive_array_partition -type complete -dim 0 "top" X
 # set_directive_array_partition -type complete -dim 0 "top" P

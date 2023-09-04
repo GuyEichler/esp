@@ -469,7 +469,7 @@ compute_data:
     //Use QR decomposition to compute inverse
     //hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
     //hls::qr_inverse<Z_MAX,word_t,word_t>(S,S_inv,inv_ok);
-    inv_ok = inverse<Z_MAX>(S, S_inv, z_dim);
+    inv_ok = inverse<Z_MAX, word_t>(S, S_inv, z_dim);
 
 #ifndef __SYNTHESIS__
     printf("inv_ok = %d\n", inv_ok);

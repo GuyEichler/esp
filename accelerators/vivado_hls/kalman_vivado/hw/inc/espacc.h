@@ -85,12 +85,14 @@ void compute(word_t _inbuff[SIZE_IN_CHUNK_DATA],
 template<unsigned DIM>
 int inverse(word_t new_mat[DIM][DIM], word_t out[DIM][DIM], unsigned real_dim);
 
+#define MAT_ARCH 1
+
 //Traits
 struct TRAITS_A:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	X_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -99,7 +101,7 @@ struct TRAITS_B:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	X_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -108,7 +110,7 @@ struct TRAITS_C:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	Z_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -117,7 +119,7 @@ struct TRAITS_D:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	Z_MAX,X_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -126,7 +128,7 @@ struct TRAITS_E:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	X_MAX,Z_MAX,Z_MAX,Z_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -144,7 +146,7 @@ struct TRAITS_F:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	Z_MAX,X_MAX,1,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -153,7 +155,7 @@ struct TRAITS_G:
 	hls::matrix_multiply_traits<hls::Transpose,hls::Transpose,
 	Z_MAX,1,X_MAX,Z_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -162,7 +164,7 @@ struct TRAITS_H:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	1, X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -171,7 +173,7 @@ struct TRAITS_I:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	X_MAX,Z_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -180,7 +182,7 @@ struct TRAITS_J:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	X_MAX,X_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 0;
+	static const int ARCH = MAT_ARCH;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };

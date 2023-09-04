@@ -216,13 +216,13 @@ int main(int argc, char **argv) {
             word_t diff = std::abs(gold_val - acc_val);
             MSE += std::pow(diff, 2.0);
 
-            if(j < x_dim)
-                std::cout << "X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
+            // if(j < x_dim)
+            //     std::cout << "X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
             // else
             //     std::cout << "P Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
 
 	    if (outbuff[i * out_words_adj + j] != outbuff_gold[i * out_words_adj + j]){
-                if(diff/gold_val > 0.5){
+                if(diff/gold_val > 0.1 || diff/acc_val > 0.1 || diff/gold_val < -0.1 || diff/acc_val < -0.1){
                     //printf("Accelerator value: %f Golden value: %f index: %d\n", acc_val, gold_val, i * out_words_adj + j);
                     if(j < x_dim)
                         std::cout << "X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;

@@ -89,6 +89,39 @@ load_data:
     printf("dma_index %d\n", dma_index);
 #endif
 
+    if(batch == 0)
+    {
+
+    load_init0:for(unsigned k = 0; k < Z_MAX; k++)
+    load_init1:for(unsigned j = 0; j < Z_MAX; j++)
+        {
+
+            if(j == 0)
+            {
+                if(k < X_MAX)
+                {
+                    X[0][k] = 0.0;
+                    X_pred[0][k] = 0.0;
+                }
+                Z[0][k] = 0.0;
+            }
+
+            if(k < X_MAX && j < X_MAX)
+            {
+                P[k][j] = 0.0;
+                P_pred[k][j] = 0.0;
+                F[k][j] = 0.0;
+                Q_kal[k][j] = 0.0;
+            }
+
+            if (j < X_MAX)
+                H[k][j] = 0.0;
+
+            R_kal[k][j] = 0.0;
+        }
+
+    }
+
     for (unsigned i = 0; i < dma_length; i++) {
 #pragma HLS loop_tripcount max=14079
 
@@ -292,7 +325,7 @@ void compute(word_t Z[1][Z_MAX],
              const unsigned z_dim,
              word_t X_pred[1][X_MAX],
              word_t P_pred[X_MAX][X_MAX],
-             word_t _outbuff[SIZE_OUT_CHUNK_DATA])
+             word_t _outbuff[SIZE_OUT_CHUNK_DATA], bool &enable)
 {
 compute_data:
 
@@ -311,6 +344,29 @@ compute_data:
     //able to share resources
     // word_t inter1[Z_MAX][X_MAX];
     word_t inter2[X_MAX][X_MAX];
+
+    word_t inter3[Z_MAX][X_MAX];//Reuse inter 1
+    word_t S[Z_MAX][Z_MAX];
+
+    word_t S_inv[Z_MAX][Z_MAX];
+    int inv_ok = 0;
+
+    //Compute K = inter2 * H.T * S_inv
+    word_t inter4[X_MAX][Z_MAX];//Reuse inter3 by changing computation
+    word_t K[X_MAX][Z_MAX];
+
+    //Compute Y = Z - (H * F * X)
+    word_t inter5[Z_MAX][X_MAX];//Reuse inter3
+    word_t Y[Z_MAX][1];
+
+    //Compute final prediction state X_pred = F * X + K * Y
+    word_t inter6[1][X_MAX];//Reuse inter1
+
+    //Compute final prediction state covariance P_pred = (I - K * H) * inter2
+    //static word_t P_pred[X_MAX][X_MAX];//Set as PLMs from top
+    word_t inter7[X_MAX][X_MAX];// Reuse inter1
+
+    if(enable){
 
     //Compute inter1 = F x P
     hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
@@ -355,8 +411,8 @@ compute_data:
 #endif
 
     //Compute S = H * inter2 * H.T + R
-    word_t inter3[Z_MAX][X_MAX];//Reuse inter 1
-    word_t S[Z_MAX][Z_MAX];
+    // word_t inter3[Z_MAX][X_MAX];//Reuse inter 1
+    // word_t S[Z_MAX][Z_MAX];
 
     //Compute inter3 = H x inter2
     hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
@@ -395,8 +451,8 @@ compute_data:
         }
 
     //Compute S^-1 = S_inv - QR inverse
-    word_t S_inv[Z_MAX][Z_MAX];
-    int inv_ok = 0;
+    // word_t S_inv[Z_MAX][Z_MAX];
+    // int inv_ok = 0;
 
     //Initialize S_inv as Identity
     LOOP_S_inv_1:for(int i = 0; i < Z_MAX; i++)
@@ -421,63 +477,64 @@ compute_data:
     // hls::print_matrix<Z_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])S_inv, "   ");
 #endif
 
-    //Compute K = inter2 * H.T * S_inv
-    //word_t inter4[X_MAX][Z_MAX];//Reuse inter3 by changing computation
-    word_t K[X_MAX][Z_MAX];
+    // //Compute K = inter2 * H.T * S_inv
+    // word_t inter4[X_MAX][Z_MAX];//Reuse inter3 by changing computation
+    // word_t K[X_MAX][Z_MAX];
 
-    // //Compute inter4 = inter2 * H.T
-    // hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
-    //                          X_MAX, X_MAX, Z_MAX, X_MAX,
-    //                          X_MAX, Z_MAX,
-    //                          TRAITS_J,
-    //                          word_t, word_t> (inter2, H, inter4);
-    //Compute inter4.T = inter3 = H * inter2.T
+    //Compute inter4 = inter2 * H.T
     hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
-                             Z_MAX, X_MAX, X_MAX, X_MAX,
-                             Z_MAX, X_MAX,
+                             X_MAX, X_MAX, Z_MAX, X_MAX,
+                             X_MAX, Z_MAX,
                              TRAITS_J,
-                             word_t, word_t> (H, inter2, inter3);
+                             word_t, word_t> (inter2, H, inter4);
+    // //Compute inter4.T = inter3 = H * inter2.T
+    // hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
+    //                          Z_MAX, X_MAX, X_MAX, X_MAX,
+    //                          Z_MAX, X_MAX,
+    //                          TRAITS_J,
+    //                          word_t, word_t> (H, inter2, inter3);
 
 #ifndef __SYNTHESIS__
     // printf("inter4 = \n");
     // hls::print_matrix<X_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])inter4, "   ");
 #endif
 
-    // //Compute K = inter4 * S_inv
-    // hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
-    //                          X_MAX, Z_MAX, Z_MAX, Z_MAX,
-    //                          X_MAX, Z_MAX,
-    //                          TRAITS_E,
-    //                          word_t, word_t> (inter4, S_inv, K);
-    //Compute K = inter4 * S_inv = inter3.T * S_inv
-    hls::matrix_multiply_top<hls::Transpose, hls::NoTranspose,
-                             Z_MAX, X_MAX, Z_MAX, Z_MAX,
+    //Compute K = inter4 * S_inv
+    hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
+                             X_MAX, Z_MAX, Z_MAX, Z_MAX,
                              X_MAX, Z_MAX,
                              TRAITS_E,
-                             word_t, word_t> (inter3, S_inv, K);
+                             word_t, word_t> (inter4, S_inv, K);
+
+    // //Compute K = inter4 * S_inv = inter3.T * S_inv
+    // hls::matrix_multiply_top<hls::Transpose, hls::NoTranspose,
+    //                          Z_MAX, X_MAX, Z_MAX, Z_MAX,
+    //                          X_MAX, Z_MAX,
+    //                          TRAITS_E,
+    //                          word_t, word_t> (inter3, S_inv, K);
 
 #ifndef __SYNTHESIS__
     // printf("K = \n");
     // hls::print_matrix<X_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])K, "   ");
 #endif
 
-    //Compute Y = Z - (H * F * X)
-    //word_t inter5[Z_MAX][X_MAX];//Reuse inter3
-    word_t Y[Z_MAX][1];
+    // //Compute Y = Z - (H * F * X)
+    // word_t inter5[Z_MAX][X_MAX];//Reuse inter3
+    // word_t Y[Z_MAX][1];
 
     //Compute inter5 = H * F
     hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
                              Z_MAX, X_MAX, X_MAX, X_MAX,
                              Z_MAX, X_MAX,
                              TRAITS_C,
-                             word_t, word_t> (H, F, inter3);
+                             word_t, word_t> (H, F, inter5);
 
     //Compute Y = inter5 * X
     hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
                              Z_MAX, X_MAX, 1, X_MAX,
                              Z_MAX, 1,
                              TRAITS_F,
-                             word_t, word_t> (inter3, X, Y);
+                             word_t, word_t> (inter5, X, Y);
 
     //Compute Y = Z - Y
     LOOP_Y:for(int i = 0; i < Z_MAX; i++)
@@ -491,16 +548,16 @@ compute_data:
             Y[i][0] = 0.0;
     }
 
-    //Compute final prediction state X_pred = F * X + K * Y
-    //static word_t X_pred[1][X_MAX];//Set as PLMs from top
-    //word_t inter6[1][X_MAX];//Reuse inter1
+    // //Compute final prediction state X_pred = F * X + K * Y
+    // //static word_t X_pred[1][X_MAX];//Set as PLMs from top
+    // word_t inter6[1][X_MAX];//Reuse inter1
 
     //Compute inter6 = K * Y
     hls::matrix_multiply_top<hls::Transpose, hls::Transpose,
                              Z_MAX, 1, X_MAX, Z_MAX,
                              1, X_MAX,
                              TRAITS_G,
-                             word_t, word_t> (Y, K, inter1);
+                             word_t, word_t> (Y, K, inter6);
 
     //Compute X_pred = F * X (Compute X.T * F.T)
     hls::matrix_multiply_top<hls::NoTranspose, hls::Transpose,
@@ -515,7 +572,7 @@ compute_data:
         if(i < x_dim)
         {
             word_t tmp = X_pred[0][i];
-            word_t tmp2 = inter1[0][i];
+            word_t tmp2 = inter6[0][i];
             X_pred[0][i] = tmp2 + tmp;
         }
         else
@@ -527,16 +584,16 @@ compute_data:
     // hls::print_matrix<1, X_MAX, word_t, hls::NoTranspose>((word_t(*)[X_MAX])X_pred, "   ");
 #endif
 
-    //Compute final prediction state covariance P_pred = (I - K * H) * inter2
-    //static word_t P_pred[X_MAX][X_MAX];//Set as PLMs from top
-    //word_t inter7[X_MAX][X_MAX];// Reuse inter1
+    // //Compute final prediction state covariance P_pred = (I - K * H) * inter2
+    // //static word_t P_pred[X_MAX][X_MAX];//Set as PLMs from top
+    // word_t inter7[X_MAX][X_MAX];// Reuse inter1
 
     //Compute inter7 = K * H
     hls::matrix_multiply_top<hls::NoTranspose, hls::NoTranspose,
                              X_MAX, Z_MAX, Z_MAX, X_MAX,
                              X_MAX, X_MAX,
                              TRAITS_I,
-                             word_t, word_t> (K, H, inter1);
+                             word_t, word_t> (K, H, inter7);
 
 #ifndef __SYNTHESIS__
     // printf("inter7 = \n");
@@ -549,14 +606,14 @@ compute_data:
         {
             if(i < x_dim && j < x_dim)
             {
-                word_t tmp = inter1[i][j];
+                word_t tmp = inter7[i][j];
                 if(i == j)
-                    inter1[i][j] = 1 - tmp;
+                    inter7[i][j] = 1 - tmp;
                 else
-                    inter1[i][j] = 0 - tmp;
+                    inter7[i][j] = 0 - tmp;
             }
             else
-                inter1[i][j] = 0;
+                inter7[i][j] = 0;
         }
 
     //Compute P_pred = inter7 * inter2
@@ -564,7 +621,7 @@ compute_data:
                              X_MAX, X_MAX, X_MAX, X_MAX,
                              X_MAX, X_MAX,
                              TRAITS_A,
-                             word_t, word_t> (inter1, inter2, P_pred);
+                             word_t, word_t> (inter7, inter2, P_pred);
 
 #ifndef __SYNTHESIS__
     // printf("P_pred = \n");
@@ -599,6 +656,7 @@ compute_data:
                 row++;
 
         }
+    }
     }
 
 }
@@ -680,7 +738,7 @@ batching:
                 z_dim,
                 X_pred,
                 P_pred,
-                _outbuff);
+                _outbuff, enable);
         // else
         //     compute(Z,
         //             X_pred,

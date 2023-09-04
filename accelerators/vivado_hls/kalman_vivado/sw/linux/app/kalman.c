@@ -47,24 +47,25 @@ static int validate_buffer(token_t *out, token_t *gold)
 			MSE += diff * diff;
 
 			if(j < x_dim)
-				printf("NO ERROR: X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+				printf("NO ERROR: X Accelerator value: %f Golden value: %f index: %d iter: %d diff: %f\n", acc_val, gold_val, i * out_words_adj + j, i, diff);
 			/* else */
 			/* 	printf("N ERROR: P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff); */
 
 			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
 			{
-				if(diff/gold_val > 0.5){
+				if(diff/gold_val > 0.5 || diff/acc_val > 0.5 || diff/gold_val < -0.5 || diff/acc_val < -0.5){
 					if(j < x_dim)
-						printf("ERROR: X Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+						printf("ERROR: X Accelerator value: %f Golden value: %f index: %d iter: %d diff: %f\n", acc_val, gold_val, i * out_words_adj + j, i, diff);
 					else
-						printf("ERROR: P Accelerator value: %f Golden value: %f index: %d\n iter: %d diff: %f", acc_val, gold_val, i * out_words_adj + j, i, diff);
+						printf("ERROR: P Accelerator value: %f Golden value: %f index: %d iter: %d diff: %f\n", acc_val, gold_val, i * out_words_adj + j, i, diff);
 					errors++;
 				}
 			}
 		}
 
 	MSE /= ((x_dim + x_dim * x_dim) * iter);
-	printf("Output MSE: %f", MSE);
+	printf("Output MSE: %f \n", MSE);
+	printf("Sum of errors is %u \n", errors);
 
 	return errors;
 }
@@ -85,7 +86,7 @@ static void init_buffer(token_t *in, token_t * gold)
 	{//z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim
 
 		//Z
-		for(; j < z_dim; j++)
+		for(j = 0; j < z_dim; j++)
 		{
 			if(i == 0)
 				in[i * in_words_adj + j] = (token_t) measurements[NEURONS * (i+1) + j];

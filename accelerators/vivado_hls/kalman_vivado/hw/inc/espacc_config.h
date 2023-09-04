@@ -15,7 +15,10 @@
 
 // In/out arrays
 
-#define SIZE_IN_CHUNK_DATA 328192
+#define X_MAX 6
+#define Z_MAX 164
+
+#define SIZE_IN_CHUNK_DATA Z_MAX+X_MAX+X_MAX*X_MAX*3+Z_MAX*Z_MAX+Z_MAX*X_MAX
 
 #define SIZE_OUT_CHUNK_DATA 42 //65792
 

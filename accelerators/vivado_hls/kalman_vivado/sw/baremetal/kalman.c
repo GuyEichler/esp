@@ -34,7 +34,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 
 #define STATES 6
 #define NEURONS 164
-#define TIME_STAMPS 2
+#define TIME_STAMPS 5
 
 /* <<--params-->> */
 const int32_t iter = TIME_STAMPS;
@@ -96,14 +96,14 @@ static int validate_buf(token_t *out, token_t *gold)
 
 			int32_t diff_fixed = float_to_fixed32(diff, 3);
 
-			/* if(j < x_dim) */
-			/* 	printf("NOT ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed); */
+			if(j < x_dim)
+				printf("NOT ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 			/* else */
 			/* 	printf("NOT ERROR: P Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed); */
 
 			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
 			{
-				if(diff / gold_val > 0.5){
+				if(diff / gold_val > 0.5 || diff / acc_val > 0.5){
 					if(j < x_dim)
 						printf("ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 					else

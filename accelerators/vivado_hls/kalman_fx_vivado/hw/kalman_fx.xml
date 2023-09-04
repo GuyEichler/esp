@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sld>
+  <accelerator name="kalman_fx" desc="Accelerator KALMAN_FX" data_size="512" device_id="149" hls_tool="vivado_hls">
+    <param name="z_dim" desc="z_dim" />
+    <param name="x_dim" desc="x_dim" />
+    <param name="iter" desc="iter" />
+  </accelerator>
+</sld>

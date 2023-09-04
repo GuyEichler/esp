@@ -72,9 +72,6 @@ typedef struct dma_info {
 #define SIZE_WORD_T SIZE_DWORD
 #endif
 
-#define X_MAX 6
-#define Z_MAX 164
-
 void top(dma_word_t *out, dma_word_t *in1,
 	/* <<--params-->> */
 	 const unsigned conf_info_iter,
@@ -93,7 +90,7 @@ struct TRAITS_A:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
 	X_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -102,7 +99,7 @@ struct TRAITS_B:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	X_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -125,23 +122,23 @@ struct TRAITS_D:
 	//static const int UNROLL_FACTOR = 3;
 };
 
-/* struct TRAITS_E: */
-/* 	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose, */
-/* 	X_MAX,Z_MAX,Z_MAX,Z_MAX,word_t, word_t> */
-/* { */
-/* 	static const int ARCH = 0; */
-/* 	//static const int INNER_II = 9; */
-/* 	//static const int UNROLL_FACTOR = 3; */
-/* }; */
-
 struct TRAITS_E:
-	hls::matrix_multiply_traits<hls::Transpose,hls::NoTranspose,
-	Z_MAX,X_MAX,Z_MAX,Z_MAX,word_t, word_t>
+	hls::matrix_multiply_traits<hls::NoTranspose,hls::NoTranspose,
+	X_MAX,Z_MAX,Z_MAX,Z_MAX,word_t, word_t>
 {
 	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
+
+/* struct TRAITS_E: */
+/* 	hls::matrix_multiply_traits<hls::Transpose,hls::NoTranspose, */
+/* 	Z_MAX,X_MAX,Z_MAX,Z_MAX,word_t, word_t> */
+/* { */
+/* 	static const int ARCH = 0; */
+/* 	//static const int INNER_II = 9; */
+/* 	//static const int UNROLL_FACTOR = 3; */
+/* }; */
 
 struct TRAITS_F:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
@@ -165,7 +162,7 @@ struct TRAITS_H:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
 	1, X_MAX,X_MAX,X_MAX,word_t, word_t>
 {
-	static const int ARCH = 2;
+	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
@@ -179,23 +176,23 @@ struct TRAITS_I:
 	//static const int UNROLL_FACTOR = 3;
 };
 
-/* struct TRAITS_J: */
-/* 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose, */
-/* 	X_MAX,X_MAX,Z_MAX,X_MAX,word_t, word_t> */
-/* { */
-/* 	static const int ARCH = 0; */
-/* 	//static const int INNER_II = 9; */
-/* 	//static const int UNROLL_FACTOR = 3; */
-/* }; */
-
 struct TRAITS_J:
 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
-	Z_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t>
+	X_MAX,X_MAX,Z_MAX,X_MAX,word_t, word_t>
 {
 	static const int ARCH = 0;
 	//static const int INNER_II = 9;
 	//static const int UNROLL_FACTOR = 3;
 };
+
+/* struct TRAITS_J: */
+/* 	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose, */
+/* 	Z_MAX,X_MAX,X_MAX,X_MAX,word_t, word_t> */
+/* { */
+/* 	static const int ARCH = 0; */
+/* 	//static const int INNER_II = 9; */
+/* 	//static const int UNROLL_FACTOR = 3; */
+/* }; */
 
 //Inverse traits
 typedef hls::qr_inverse_traits<Z_MAX, word_t, word_t> INV_CFG;

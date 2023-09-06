@@ -1,7 +1,7 @@
 // Copyright (c) 2011-2023 Columbia University, System Level Design Group
 // SPDX-License-Identifier: Apache-2.0
-#ifndef _KALMAN_VIVADO_H_
-#define _KALMAN_VIVADO_H_
+#ifndef _KALMAN_FX_VIVADO_H_
+#define _KALMAN_FX_VIVADO_H_
 
 #ifdef __KERNEL__
 #include <linux/ioctl.h>
@@ -17,7 +17,7 @@
 #include <esp.h>
 #include <esp_accelerator.h>
 
-struct kalman_vivado_access {
+struct kalman_fx_vivado_access {
 	struct esp_access esp;
 	/* <<--regs-->> */
 	unsigned iter;
@@ -27,6 +27,6 @@ struct kalman_vivado_access {
 	unsigned dst_offset;
 };
 
-#define KALMAN_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct kalman_vivado_access)
+#define KALMAN_FX_VIVADO_IOC_ACCESS	_IOW ('S', 0, struct kalman_fx_vivado_access)
 
-#endif /* _KALMAN_VIVADO_H_ */
+#endif /* _KALMAN_FX_VIVADO_H_ */

@@ -34,10 +34,13 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 
 #define STATES 6
 #define NEURONS 164
-#define TIME_STAMPS 5
+#define TIME_STAMPS 10
+#define CHUNKS 10
+#define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-->> */
-const int32_t iter = TIME_STAMPS;
+const int32_t chunks = CHUNKS;
+const int32_t iter = BATCHES;
 const int32_t x_dim = STATES;
 const int32_t z_dim = NEURONS;
 
@@ -60,6 +63,7 @@ static unsigned mem_size;
 
 /* User defined registers */
 /* <<--regs-->> */
+#define KALMAN_CHUNKS_REG 0x4C
 #define KALMAN_ITER_REG 0x48
 #define KALMAN_X_DIM_REG 0x44
 #define KALMAN_Z_DIM_REG 0x40
@@ -77,7 +81,7 @@ static int validate_buf(token_t *out, token_t *gold)
 	float MSE = 0.0;
 
 	for (i = 0; i < iter; i++)
-		for (j = 0; j < x_dim + x_dim * x_dim; j++)
+		for (j = 0; j < (x_dim + x_dim * x_dim)*chunks; j++)
 		{
 
 			token_t gold_val = gold[i * out_words_adj + j];
@@ -96,14 +100,14 @@ static int validate_buf(token_t *out, token_t *gold)
 
 			int32_t diff_fixed = float_to_fixed32(diff, 3);
 
-			if(j < x_dim)
+			if(j%(x_dim + x_dim*x_dim) < x_dim)
 				printf("NOT ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 			/* else */
 			/* 	printf("NOT ERROR: P Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed); */
 
 			if (gold[i * out_words_adj + j] != out[i * out_words_adj + j])
 			{
-				if(diff / gold_val > 0.5 || diff / acc_val > 0.5){
+				if(diff / gold_val > 0.1 || diff / acc_val > 0.1 || diff / gold_val < -0.1 || diff / acc_val < -0.1){
 					if(j < x_dim)
 						printf("ERROR: X Accelerator value: %d Golden value: %d index: %u iter: %d diff: %d \n", acc_fixed, gold_fixed, i * out_words_adj + j, i, diff_fixed);
 					else
@@ -114,7 +118,7 @@ static int validate_buf(token_t *out, token_t *gold)
 			}
 		}
 
-	MSE /= ((x_dim + x_dim * x_dim) * iter);
+	MSE /= ((x_dim + x_dim * x_dim) * TIME_STAMPS);
 	int32_t MSE_fixed = float_to_fixed32(MSE, 2);
 	printf("Output MSE: %d \n", MSE);
 
@@ -133,72 +137,83 @@ static void init_buf (token_t *in, token_t * gold)
 	for(i = 0; i < iter; i++)
 	{//z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim
 
-		//Z
-		for(j = 0; j < z_dim; j++)
-		{
-			if(i == 0)
-				in[j] = (token_t) measurements[NEURONS * (i+1) + j];
-			else
-				in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i+1) + j];
-
-			/* int32_t val = float_to_fixed32(measurements[NEURONS * (i+1) + j], 3); */
-			/* if(i == 1) */
-			/* 	printf("Value of Z = %d index %d\n", val, in_words_adj + (i-1) * in_words_adj_z + j); */
-		}
+		j = 0;
 
 		if(i == 0) //only for first iteration
 		{
 			//X
-			for(; j < z_dim + x_dim; j++)
+			for(; j < x_dim; j++)
 			{
-				in[j] = (token_t) initial[j - z_dim];
+				in[j] = (token_t) initial[j];
 			}
 
 			//P
-			for(; j < z_dim + x_dim + x_dim * x_dim; j++)
+			for(; j < x_dim + x_dim * x_dim; j++)
 			{
 				in[j] = (token_t) 0.0;
 			}
 
 			//F
-			for(; j < z_dim + x_dim + x_dim * x_dim * 2; j++)
+			for(; j < x_dim + x_dim * x_dim * 2; j++)
 			{
-				in[j] = (token_t) A[j - (z_dim + x_dim + x_dim * x_dim)];
+				in[j] = (token_t) A[j - (x_dim + x_dim * x_dim)];
 			}
 
 			//Q
-			for(; j < z_dim + x_dim + x_dim * x_dim * 3; j++)
+			for(; j < x_dim + x_dim * x_dim * 3; j++)
 			{
-				in[j] = (token_t) W[j - (z_dim + x_dim + x_dim * x_dim * 2)];
+				in[j] = (token_t) W[j - (x_dim + x_dim * x_dim * 2)];
 			}
 
 			//R
-			for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
+			for(; j < x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
 			{
-				in[j] = (token_t) Q[j - (z_dim + x_dim + x_dim * x_dim * 3)];
+				in[j] = (token_t) Q[j - (x_dim + x_dim * x_dim * 3)];
 			}
 
 			//H
-			for(; j < z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
+			for(; j < x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
 			{
-				in[j] = (token_t) H[j - (z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
+				in[j] = (token_t) H[j - (x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
 				//printf("Value of H = %f \n", measurements[NEURONS * (i+1) + j]);
 			}
 		}
+
+		unsigned base_index = (x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim);
+
+		//Z
+		if(i == 0)
+			for(; j < base_index + z_dim * chunks; j++)
+			{
+
+				in[j] = (token_t) measurements[NEURONS * (i+1) + j - base_index];
+				int32_t val = float_to_fixed32(measurements[NEURONS * (i+1) + j], 3);
+				//printf("Value of Z = %d index %d \n", val, j);
+				/* in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i+1) + j]; */
+			}
+		else
+			for(; j < z_dim * chunks; j++)
+			{
+				in[in_words_adj + i * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i * chunks + 1) + j];
+				int32_t val = float_to_fixed32(measurements[NEURONS * i + j], 3);
+			// if(i == 3)
+			//printf("Value of Z = %d index %d \n", val, i * in_words_adj + j);
+			}
+
 	}
 
 
 	/* for (i = 0; i < iter; i++) */
 	/* 	for (j = 0; j < x_dim + x_dim * x_dim; j++) */
 	/* 		gold[i * out_words_adj + j] = (token_t) j; */
-	for(i = 0; i < iter; i++)
+	for(i = 0; i < TIME_STAMPS; i++)
 		for(j = 0; j < x_dim + x_dim * x_dim; j++)
 		{
 			if(j < x_dim)
-				gold[i * out_words_adj + j] = (token_t) prediction[STATES * (i+1) + j];
+				gold[i * out_words_adj/chunks + j] = (token_t) prediction[STATES * (i+1) + j];
 			else
 			{
-				gold[i * out_words_adj + j] = (token_t) P_flat[i * x_dim * x_dim + (j - x_dim)];
+				gold[i * out_words_adj/chunks + j] = (token_t) P_flat[i * x_dim * x_dim + (j - x_dim)];
 			}
 		}
 
@@ -221,15 +236,15 @@ int main(int argc, char * argv[])
 	unsigned coherence;
 
 	if (DMA_WORD_PER_BEAT(sizeof(token_t)) == 0) {
-		in_words_adj = z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim;
-		in_words_adj_z = z_dim;
-		out_words_adj = x_dim + x_dim * x_dim;
+		in_words_adj = x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim;
+		in_words_adj_z = z_dim * chunks;
+		out_words_adj = (x_dim + x_dim * x_dim) * chunks;
 	} else {
-		in_words_adj = round_up(z_dim + x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
-		in_words_adj_z = round_up(z_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
-		out_words_adj = round_up(x_dim + x_dim * x_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
+		in_words_adj = round_up(x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim, DMA_WORD_PER_BEAT(sizeof(token_t)));
+		in_words_adj_z = round_up(z_dim * chunks, DMA_WORD_PER_BEAT(sizeof(token_t)));
+		out_words_adj = round_up((x_dim + x_dim * x_dim) * chunks, DMA_WORD_PER_BEAT(sizeof(token_t)));
 	}
-	in_len = in_words_adj + in_words_adj_z * (iter-1);
+	in_len = in_words_adj + in_words_adj_z * iter;
 	out_len = out_words_adj * (iter);
 	in_size = in_len * sizeof(token_t);
 	out_size = out_len * sizeof(token_t);
@@ -306,6 +321,7 @@ int main(int argc, char * argv[])
 
 			// Pass accelerator-specific configuration parameters
 			/* <<--regs-config-->> */
+			iowrite32(dev, KALMAN_CHUNKS_REG, chunks);
 			iowrite32(dev, KALMAN_ITER_REG, iter);
 			iowrite32(dev, KALMAN_X_DIM_REG, x_dim);
 			iowrite32(dev, KALMAN_Z_DIM_REG, z_dim);

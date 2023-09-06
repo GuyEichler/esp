@@ -74,6 +74,7 @@ typedef struct dma_info {
 
 void top(dma_word_t *out, dma_word_t *in1,
 	/* <<--params-->> */
+	 const unsigned conf_info_chunks,
 	 const unsigned conf_info_iter,
 	 const unsigned conf_info_x_dim,
 	 const unsigned conf_info_z_dim,

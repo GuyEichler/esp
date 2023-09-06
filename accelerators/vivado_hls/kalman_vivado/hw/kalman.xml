@@ -4,5 +4,6 @@
     <param name="z_dim" desc="z_dim" />
     <param name="x_dim" desc="x_dim" />
     <param name="iter" desc="iter" />
+    <param name="chunks" desc="chunks" />
   </accelerator>
 </sld>

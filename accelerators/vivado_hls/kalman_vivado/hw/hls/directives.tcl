@@ -8,7 +8,8 @@ set_directive_interface -mode ap_none "top" conf_info_x_dim
 set_directive_interface -mode ap_none "top" conf_info_z_dim
 
 # Insert here any custom directive
-#set_directive_dataflow "top/go"
+# set_directive_dataflow "top/go"
+#set_directive_dataflow "compute"
 #set_directive_array_partition -type cyclic -factor 2 -dim 1 "top" _inbuff
 set_directive_array_partition -type cyclic -factor 2 -dim 1 "top" _outbuff
 
@@ -30,7 +31,7 @@ set_directive_dependence -variable R_kal -type inter -dependent false "load/load
 # set_directive_unroll -off "compute/LOOP_SR_1"
 
 # set_directive_dataflow "qr_inverse_top"
-set_directive_inline -recursive "qr_inverse_top"
+# set_directive_inline -recursive "qr_inverse_top"
 #set_directive_inline -recursive "matrix_multiply_top"
 
 set_directive_pipeline "load/load_pred"

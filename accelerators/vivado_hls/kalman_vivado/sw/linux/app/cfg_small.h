@@ -11,14 +11,17 @@ typedef float token_t;
 #define STATES 2
 #define NEURONS 1
 #define TIME_STAMPS 2
+#define CHUNKS 1
+#define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-def-->> */
-#define ITER TIME_STAMPS
+#define ITER BATCHES
 #define X_DIM STATES
 #define Z_DIM NEURONS
 
 /* <<--params-->> */
-const int32_t iter = ITER;
+const int32_t chunks = CHUNKS;
+const int32_t iter = BATCHES;
 const int32_t x_dim = X_DIM;
 const int32_t z_dim = Z_DIM;
 
@@ -27,6 +30,7 @@ const int32_t z_dim = Z_DIM;
 struct kalman_vivado_access kalman_cfg_000[] = {
 	{
 		/* <<--descriptor-->> */
+		.chunks = CHUNKS,
 		.iter = ITER,
 		.x_dim = X_DIM,
 		.z_dim = Z_DIM,

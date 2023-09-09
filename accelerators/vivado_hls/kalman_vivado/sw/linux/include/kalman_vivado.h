@@ -20,6 +20,8 @@
 struct kalman_vivado_access {
 	struct esp_access esp;
 	/* <<--regs-->> */
+	unsigned inv_reset;
+	unsigned inv_num;
 	unsigned chunks;
 	unsigned iter;
 	unsigned x_dim;

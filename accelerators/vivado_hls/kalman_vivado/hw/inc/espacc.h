@@ -74,6 +74,8 @@ typedef struct dma_info {
 
 void top(dma_word_t *out, dma_word_t *in1,
 	/* <<--params-->> */
+	 const unsigned conf_info_inv_reset,
+	 const unsigned conf_info_inv_num,
 	 const unsigned conf_info_chunks,
 	 const unsigned conf_info_iter,
 	 const unsigned conf_info_x_dim,
@@ -197,6 +199,15 @@ struct TRAITS_J:
 /* 	//static const int UNROLL_FACTOR = 3; */
 /* }; */
 
+struct TRAITS_K:
+	hls::matrix_multiply_traits<hls::NoTranspose,hls::Transpose,
+	Z_MAX,Z_MAX,Z_MAX,Z_MAX,word_t, word_t>
+{
+	static const int ARCH = MAT_ARCH;
+	/* static const int INNER_II = 1; */
+	/* static const int UNROLL_FACTOR = 8; */
+};
+
 //Inverse traits
 typedef hls::qr_inverse_traits<Z_MAX, word_t, word_t> INV_CFG;
 
@@ -234,6 +245,39 @@ struct MY_CONFIG : INV_CFG {
                 static const int ARCH = 0;
                 static const int INNER_II = 1;
                 //static const int UNROLL_FACTOR = 4;
+	};
+};
+
+typedef hls::cholesky_inverse_traits<Z_MAX,
+	word_t,
+	word_t> MY_DFLT_CFG;
+
+struct MY_CONFIG_C : MY_DFLT_CFG {
+	struct CHOLESKY_TRAITS :
+		hls::cholesky_traits<false,
+		Z_MAX,
+		word_t,
+		MY_DFLT_CFG::CHOLESKY_OUT> {
+		static const int ARCH = 2;
+	};
+	struct BACK_SUB_CONFIG :
+		hls::back_substitute_traits<Z_MAX,
+		word_t,
+		word_t> {
+		static const int INNER_II = 1;
+		static const int DIAG_II = 1;
+	};
+	struct MULTIPLIER_CONFIG :
+		hls::matrix_multiply_traits<hls::NoTranspose,
+		hls::ConjugateTranspose,
+		Z_MAX,
+		Z_MAX,
+		Z_MAX,
+		Z_MAX,
+		word_t,
+		word_t> {
+                static const int ARCH = 1;
+		static const int INNER_II = 1;
 	};
 };
 

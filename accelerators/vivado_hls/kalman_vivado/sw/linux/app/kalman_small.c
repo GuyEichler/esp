@@ -209,6 +209,8 @@ int main(int argc, char **argv)
 
 	printf("\n====== %s ======\n\n", cfg_000[0].devname);
 	/* <<--print-params-->> */
+	printf("  .inv_reset = %d\n", ((struct kalman_vivado_access *)cfg_000[0].esp_desc)->inv_reset);
+	printf("  .inv_num = %d\n", ((struct kalman_vivado_access *)cfg_000[0].esp_desc)->inv_num);
 	printf("  .chunks = %d\n", ((struct kalman_vivado_access *)cfg_000[0].esp_desc)->chunks);
 	printf("  .iter = %d\n", ((struct kalman_vivado_access *)cfg_000[0].esp_desc)->iter);
 	printf("  .x_dim = %d\n", ((struct kalman_vivado_access *)cfg_000[0].esp_desc)->x_dim);

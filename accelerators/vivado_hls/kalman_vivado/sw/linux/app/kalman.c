@@ -204,6 +204,8 @@ int main(int argc, char **argv)
 
 	printf("\n====== %s ======\n\n", cfg_000[0].devname);
 	/* <<--print-params-->> */
+	printf("  .inv_reset = %d\n", inv_reset);
+	printf("  .inv_num = %d\n", inv_num);
 	printf("  .chunks = %d\n", chunks);
 	printf("  .iter = %d\n", iter);
 	printf("  .x_dim = %d\n", x_dim);

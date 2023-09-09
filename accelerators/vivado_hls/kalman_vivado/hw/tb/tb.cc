@@ -23,7 +23,7 @@ using namespace Eigen;
 #define STATES 6
 #define NEURONS 164
 #define TIME_STAMPS 10
-#define CHUNKS 10
+#define CHUNKS 1
 #define BATCHES TIME_STAMPS / CHUNKS
 
 int main(int argc, char **argv) {
@@ -31,6 +31,8 @@ int main(int argc, char **argv) {
     printf("****start*****\n");
 
     /* <<--params-->> */
+    const unsigned inv_reset = 3;
+    const unsigned inv_num = 2;
     const unsigned chunks = CHUNKS;
     const unsigned iter = BATCHES;
     const unsigned x_dim = STATES;
@@ -213,6 +215,8 @@ int main(int argc, char **argv) {
     // Call the TOP function
     top(mem, mem,
         /* <<--args-->> */
+                 inv_reset,
+                 inv_num,
          	 chunks,
          	 iter,
          	 x_dim,

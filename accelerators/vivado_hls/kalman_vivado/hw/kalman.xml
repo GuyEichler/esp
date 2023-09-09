@@ -5,5 +5,7 @@
     <param name="x_dim" desc="x_dim" />
     <param name="iter" desc="iter" />
     <param name="chunks" desc="chunks" />
+    <param name="inv_num" desc="inv_num" />
+    <param name="inv_reset" desc="inv_reset" />
   </accelerator>
 </sld>

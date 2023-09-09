@@ -3,6 +3,9 @@
 
 # User-defined configuration ports
 # <<--directives-param-->>
+set_directive_interface -mode ap_none "top" conf_info_inv_reset
+set_directive_interface -mode ap_none "top" conf_info_inv_num
+set_directive_interface -mode ap_none "top" conf_info_chunks
 set_directive_interface -mode ap_none "top" conf_info_iter
 set_directive_interface -mode ap_none "top" conf_info_x_dim
 set_directive_interface -mode ap_none "top" conf_info_z_dim
@@ -17,26 +20,28 @@ set_directive_array_partition -type complete -dim 0 "load" tmp
 # set_directive_pipeline "load/load_label1"
 set_directive_pipeline "load/load_init1"
 set_directive_dependence -variable X -type inter -dependent false "load/load_init1"
-set_directive_dependence -variable X_pred -type inter -dependent false "load/load_init1"
+#set_directive_dependence -variable X_pred -type inter -dependent false "load/load_init1"
 set_directive_dependence -variable Z -type inter -dependent false "load/load_init1"
 set_directive_dependence -variable P -type inter -dependent false "load/load_init1"
-set_directive_dependence -variable P_pred -type inter -dependent false "load/load_init1"
+#set_directive_dependence -variable P_pred -type inter -dependent false "load/load_init1"
 set_directive_dependence -variable F -type inter -dependent false "load/load_init1"
 set_directive_dependence -variable Q_kal -type inter -dependent false "load/load_init1"
 set_directive_dependence -variable H -type inter -dependent false "load/load_init1"
 set_directive_dependence -variable R_kal -type inter -dependent false "load/load_init1"
 
 
-# set_directive_pipeline "compute"
+# set_directive_pipeline "compute/compute_loop"
 # set_directive_unroll -off "compute/LOOP_SR_1"
 
 # set_directive_dataflow "qr_inverse_top"
 # set_directive_inline -recursive "qr_inverse_top"
 #set_directive_inline -recursive "matrix_multiply_top"
 
-set_directive_pipeline "load/load_pred"
-set_directive_dependence -variable X -type inter -dependent false "load/load_pred"
-set_directive_dependence -variable P -type inter -dependent false "load/load_pred"
+# set_directive_dataflow "cholesky_inverse_top"
+
+#set_directive_pipeline "load/load_pred"
+#set_directive_dependence -variable X -type inter -dependent false "load/load_pred"
+#set_directive_dependence -variable P -type inter -dependent false "load/load_pred"
 # set_directive_pipeline "compute/LOOP_INT2_2"
 set_directive_pipeline "compute/LOOP_S_inv_2"
 set_directive_dependence -variable S_inv -type inter -dependent false "compute/LOOP_S_inv_2"
@@ -45,11 +50,26 @@ set_directive_dependence -variable S -type inter -dependent false "compute/LOOP_
 set_directive_pipeline "compute/LOOP_Y"
 set_directive_dependence -variable Y -type inter -dependent false "compute/LOOP_Y"
 set_directive_pipeline "compute/LOOP_X_PRED"
-set_directive_dependence -variable X_pred -type inter -dependent false "compute/LOOP_X_PRED"
+#set_directive_dependence -variable X_pred -type inter -dependent false "compute/LOOP_X_PRED"
 set_directive_pipeline "compute/LOOP_INT7_2"
 set_directive_dependence -variable inter7 -type inter -dependent false "compute/LOOP_INT7_2"
 set_directive_pipeline "compute/LOOP_OUT"
 set_directive_dependence -variable _outbuff -type inter -dependent false "compute/LOOP_OUT"
+
+
+set_directive_unroll "compute/init_pred_2"
+set_directive_array_partition -type complete -dim 0 "top" X
+set_directive_array_partition -type complete -dim 0 "top" X_pred_ping
+set_directive_array_partition -type complete -dim 0 "top" X_pred_pong
+set_directive_array_partition -type complete -dim 0 "top" P
+set_directive_array_partition -type complete -dim 0 "top" P_pred_ping
+set_directive_array_partition -type complete -dim 0 "top" P_pred_pong
+
+# set_directive_array_partition -type cyclic -factor 4 -dim 2 "compute" S
+# set_directive_array_partition -type cyclic -factor 4 -dim 2 "compute" S_inv
+# set_directive_array_partition -type cyclic -factor 4 -dim 2 "compute" S_inv_final
+# set_directive_array_partition -type cyclic -factor 4 -dim 2 "compute" S_inv_final_2
+
 # set_directive_array_partition -type complete -dim 2 "compute" inter2
 # set_directive_array_partition -type complete -dim 0 "top" X
 # set_directive_array_partition -type complete -dim 0 "top" P
@@ -76,3 +96,10 @@ set_directive_dependence -variable _outbuff -type inter -dependent false "comput
 
 # set_directive_array_map -instance inter1346 -mode horizontal compute inter16
 # set_directive_array_map -instance inter1346 -mode horizontal compute inter34
+
+set_directive_dependence -variable S_inv -type inter -dependent false "compute/mat_mul_k/LOOP_K2"
+set_directive_dependence -variable inter4 -type inter -dependent false "compute/mat_mul_k/LOOP_K2"
+set_directive_dependence -variable K -type inter -dependent false "compute/mat_mul_k/LOOP_K2"
+
+# set_directive_inline -off compute/mul_int11
+# set_directive_inline -off compute/mul_int12

@@ -39,6 +39,8 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 #define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-->> */
+const int32_t inv_reset = 0;
+const int32_t inv_num = 0;
 const int32_t chunks = CHUNKS;
 const int32_t iter = BATCHES;
 const int32_t x_dim = STATES;
@@ -63,6 +65,8 @@ static unsigned mem_size;
 
 /* User defined registers */
 /* <<--regs-->> */
+#define KALMAN_INV_RESET_REG 0x54
+#define KALMAN_INV_NUM_REG 0x50
 #define KALMAN_CHUNKS_REG 0x4C
 #define KALMAN_ITER_REG 0x48
 #define KALMAN_X_DIM_REG 0x44
@@ -321,6 +325,8 @@ int main(int argc, char * argv[])
 
 			// Pass accelerator-specific configuration parameters
 			/* <<--regs-config-->> */
+			iowrite32(dev, KALMAN_INV_RESET_REG, inv_reset);
+			iowrite32(dev, KALMAN_INV_NUM_REG, inv_num);
 			iowrite32(dev, KALMAN_CHUNKS_REG, chunks);
 			iowrite32(dev, KALMAN_ITER_REG, iter);
 			iowrite32(dev, KALMAN_X_DIM_REG, x_dim);

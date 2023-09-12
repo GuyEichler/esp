@@ -667,13 +667,16 @@ template<unsigned X_DIM, unsigned Z_DIM>
 void mat_mul(word_t A[X_DIM][Z_DIM], word_t B[Z_DIM][Z_DIM], word_t C[X_DIM][Z_DIM], unsigned x_dim, unsigned z_dim)
 {
 
-LOOP_K1:for (int i = 0; i < X_DIM; i++) {
+LOOP_K1:for (int i = 0; i < x_dim; i++) {
+         #pragma HLS loop_tripcount max=164
     /* #pragma HLS unroll factor=1 */
 			    /* K[i][j] = 0; */
-    LOOP_K3:for (int k = 0; k < Z_DIM; k++) {
+    LOOP_K3:for (int k = 0; k < z_dim; k++) {
     /* #pragma HLS unroll factor=1 */
+         #pragma HLS loop_tripcount max=164
 	    word_t A_ik = A[i][k];
-	    LOOP_K2:for (int j = 0; j < Z_DIM; j++) {
+	    LOOP_K2:for (int j = 0; j < z_dim; j++) {
+                            #pragma HLS loop_tripcount max=164
                             #pragma HLS array_partition \
 			    	variable=C cyclic factor=8 dim=2
                             /* #pragma HLS array_partition \ */
@@ -684,7 +687,7 @@ LOOP_K1:for (int i = 0; i < X_DIM; i++) {
                             #pragma HLS dependence variable=B inter false
                             #pragma HLS PIPELINE II=1
                             #pragma HLS unroll factor=8
-				    if(i < x_dim && j < z_dim && k < z_dim)
+				    /* if(i < x_dim && j < z_dim && k < z_dim) */
 					    if(k == 0)
 						    /* C[i][j] = A[i][k] * B[k][j]; */
 						    C[i][j] = A_ik * B[k][j];
@@ -693,8 +696,8 @@ LOOP_K1:for (int i = 0; i < X_DIM; i++) {
 						    C[i][j] += A_ik * B[k][j];
 					    }
 	    }
-	    }
-    }
+		}
+	}
 
 }
 
@@ -756,11 +759,13 @@ void iterative_inverse(word_t new_mat[DIM][DIM], word_t out[DIM][DIM], word_t ne
         /*                      word_t, word_t> (new_mat, out, new_out); */
 
 	//2I - A*X_n
-	for(int i = 0; i < DIM; i++)
-		for(int j = 0; j < DIM; j++){
+	for(int i = 0; i < z_dim; i++)
+         #pragma HLS loop_tripcount max=164
+		for(int j = 0; j < z_dim; j++){
+         #pragma HLS loop_tripcount max=164
                     #pragma HLS PIPELINE
                     #pragma HLS dependence variable=new_out inter false
-			if(i < z_dim && j < z_dim)
+			/* if(i < z_dim && j < z_dim) */
 				if(i == j){
 					new_out[i][j] = 2 - new_out[i][j];
 				}

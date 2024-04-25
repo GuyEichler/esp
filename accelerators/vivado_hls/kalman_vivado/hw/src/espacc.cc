@@ -577,30 +577,55 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
             if(i == j && i < z_dim)
             {
                 if((curr_batch == 0 && c == 0) || inv_num == 0 || inv_counter == inv_reset)
+                {
                     S_inv[i][j] = 1.0;
-                S_inv_final[i][j] = 1.0;
-                S_inv_final2[i][j] = 1.0;
+                    S_inv_final[i][j] = 1.0;
+                    S_inv_final2[i][j] = 1.0;
+                }
+                else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
+                {
+                    //printf("HERE\n");
+                    word_t tmp = S_inv_final[i][j];
+                    word_t tmp2 = S_inv_final2[i][j];
+                    if(inv_num % 2 == 0)// && c > 1)
+                        S_inv[i][j] = tmp2;
+                    else// if (c > 1)
+                        S_inv[i][j] = tmp;
+                }
             }
             else
             {
                 if((curr_batch == 0 && c == 0) || inv_num == 0 || inv_counter == inv_reset)
+                {
                     S_inv[i][j] = 0.0;
-                S_inv_final[i][j] = 0.0;
-                S_inv_final2[i][j] = 0.0;
+                    S_inv_final[i][j] = 0.0;
+                    S_inv_final2[i][j] = 0.0;
+                }
+                else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
+                {
+                    word_t tmp = S_inv_final[i][j];
+                    word_t tmp2 = S_inv_final2[i][j];
+                    if(inv_num % 2 == 0)// && c > 1)
+                        S_inv[i][j] = tmp2;
+                    else// if (c > 1)
+                        S_inv[i][j] = tmp;
+                }
             }
 
         }
     // init_s_inv(S_inv, z_dim);
 
-    //Use QR decomposition to compute inverse
-    //hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
-    //hls::qr_inverse<Z_MAX,word_t,word_t>(S,S_inv,inv_ok);
     if((curr_batch == 0 && c == 0) || inv_num == 0 || inv_counter == inv_reset)
+    {
         inv_ok = inverse<Z_MAX, word_t>(S, S_inv, z_dim);
-    else{
-    // inverse<Z_MAX, word_t>(S, S_inv, z_dim, inv_ok);
-    // inv_ok = inverse_partial<Z_MAX, word_t>(S, S_inv, z_dim);
-    //many_iterative_inverse<Z_MAX,1>(S, S_inv, z_dim);
+        // hls::cholesky_inverse_top<Z_MAX,MY_CONFIG_C,word_t,word_t>(S,S_inv,inv_ok);
+        //Use QR decomposition to compute inverse
+        //hls::qr_inverse_top<Z_MAX,MY_CONFIG,word_t,word_t>(S,S_inv,inv_ok);
+        //hls::qr_inverse<Z_MAX,word_t,word_t>(S,S_inv,inv_ok);
+    }else{
+        // inverse<Z_MAX, word_t>(S, S_inv, z_dim, inv_ok);
+        // inv_ok = inverse_partial<Z_MAX, word_t>(S, S_inv, z_dim);
+        //many_iterative_inverse<Z_MAX,1>(S, S_inv, z_dim);
         for(unsigned i = 0; i < inv_num; i++){
         #pragma HLS loop_tripcount max=3
             if(i == 0){
@@ -620,7 +645,6 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
     // iterative_inverse<Z_MAX>(S, S_inv_final2, S_inv_final, z_dim);
     }
 
-// hls::cholesky_inverse_top<Z_MAX,MY_CONFIG_C,word_t,word_t>(S,S_inv,inv_ok);
 
 #ifndef __SYNTHESIS__
     printf("inv_ok = %d\n", inv_ok);

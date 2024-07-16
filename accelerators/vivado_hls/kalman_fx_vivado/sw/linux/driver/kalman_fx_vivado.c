@@ -13,6 +13,9 @@
 #define DRV_NAME	"kalman_fx_vivado"
 
 /* <<--regs-->> */
+#define KALMAN_FX_INV_RESET_REG 0x54
+#define KALMAN_FX_INV_NUM_REG 0x50
+#define KALMAN_FX_CHUNKS_REG 0x4C
 #define KALMAN_FX_ITER_REG 0x48
 #define KALMAN_FX_X_DIM_REG 0x44
 #define KALMAN_FX_Z_DIM_REG 0x40
@@ -48,6 +51,9 @@ static void kalman_fx_prep_xfer(struct esp_device *esp, void *arg)
 	struct kalman_fx_vivado_access *a = arg;
 
 	/* <<--regs-config-->> */
+	iowrite32be(a->inv_reset, esp->iomem + KALMAN_FX_INV_RESET_REG);
+	iowrite32be(a->inv_num, esp->iomem + KALMAN_FX_INV_NUM_REG);
+	iowrite32be(a->chunks, esp->iomem + KALMAN_FX_CHUNKS_REG);
 	iowrite32be(a->iter, esp->iomem + KALMAN_FX_ITER_REG);
 	iowrite32be(a->x_dim, esp->iomem + KALMAN_FX_X_DIM_REG);
 	iowrite32be(a->z_dim, esp->iomem + KALMAN_FX_Z_DIM_REG);

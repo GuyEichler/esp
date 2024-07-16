@@ -11,7 +11,7 @@ typedef float token_t;
 #define STATES 6
 #define NEURONS 164
 #define TIME_STAMPS 100
-#define CHUNKS 100
+#define CHUNKS 2
 #define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-def-->> */

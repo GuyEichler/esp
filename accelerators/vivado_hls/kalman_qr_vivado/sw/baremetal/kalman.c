@@ -29,13 +29,13 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 }
 
 
-#define SLD_KALMAN 0x049
-#define DEV_NAME "sld,kalman_vivado"
+#define SLD_KALMAN 0x069
+#define DEV_NAME "sld,kalman_qr_vivado"
 
 #define STATES 6
 #define NEURONS 164
 #define TIME_STAMPS 10
-#define CHUNKS 10
+#define CHUNKS 1
 #define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-->> */

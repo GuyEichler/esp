@@ -209,22 +209,22 @@ int main(int argc, char **argv)
 	else {
 		const char* x_str = argv[1];
 		x_dim = atoi(x_str);
-		((struct kalman_vivado_access*) cfg_000[0].esp_desc)->x_dim = x_dim;
+		((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->x_dim = x_dim;
 		const char* z_str = argv[2];
 		z_dim = atoi(z_str);
-		((struct kalman_vivado_access*) cfg_000[0].esp_desc)->z_dim = z_dim;
+		((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->z_dim = z_dim;
 		const char* iter_str = argv[3];
 		iter = atoi(iter_str);
-		((struct kalman_vivado_access*) cfg_000[0].esp_desc)->iter = iter;
+		((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->iter = iter;
 		const char* chunks_str = argv[4];
 		chunks = atoi(chunks_str);
-		((struct kalman_vivado_access*) cfg_000[0].esp_desc)->chunks = chunks;
+		((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->chunks = chunks;
 		const char* inv_num_str = argv[5];
 		inv_num = atoi(inv_num_str);
-		((struct kalman_vivado_access*) cfg_000[0].esp_desc)->inv_num = inv_num;
+		((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->inv_num = inv_num;
 		const char* inv_reset_str = argv[6];
 		inv_reset = atoi(inv_reset_str);
-		((struct kalman_vivado_access*) cfg_000[0].esp_desc)->inv_reset = inv_reset;
+		((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->inv_reset = inv_reset;
 		printf("running x_dim=%d z_dim=%d iter=%d chunks=%d inv_num=%d inv_reset=%d \n", x_dim, z_dim, iter, chunks, inv_num, inv_reset);
 	}
 
@@ -240,12 +240,12 @@ int main(int argc, char **argv)
 
 	printf("\n====== %s ======\n\n", cfg_000[0].devname);
 	/* <<--print-params-->> */
-	printf("  .inv_reset = %d\n", ((struct kalman_vivado_access*) cfg_000[0].esp_desc)->inv_reset);
-	printf("  .inv_num = %d\n", ((struct kalman_vivado_access*) cfg_000[0].esp_desc)->inv_num);
-	printf("  .chunks = %d\n", ((struct kalman_vivado_access*) cfg_000[0].esp_desc)->chunks);
-	printf("  .iter = %d\n", ((struct kalman_vivado_access*) cfg_000[0].esp_desc)->iter);
-	printf("  .x_dim = %d\n", ((struct kalman_vivado_access*) cfg_000[0].esp_desc)->x_dim);
-	printf("  .z_dim = %d\n", ((struct kalman_vivado_access*) cfg_000[0].esp_desc)->z_dim);
+	printf("  .inv_reset = %d\n", ((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->inv_reset);
+	printf("  .inv_num = %d\n", ((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->inv_num);
+	printf("  .chunks = %d\n", ((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->chunks);
+	printf("  .iter = %d\n", ((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->iter);
+	printf("  .x_dim = %d\n", ((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->x_dim);
+	printf("  .z_dim = %d\n", ((struct kalman_qr_vivado_access*) cfg_000[0].esp_desc)->z_dim);
 	printf("\n  ** START **\n");
 
 	esp_run(cfg_000, NACC);

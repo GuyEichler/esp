@@ -28,7 +28,7 @@
 
 // data word
 #if (IS_TYPE_FIXED_POINT ==  1)
-typedef ap_fixed<DATA_BITWIDTH,DATA_BITWIDTH-FRAC_BITS> word_t;
+typedef ap_fixed<DATA_BITWIDTH,DATA_BITWIDTH-FRAC_BITS,AP_RND_INF,AP_SAT> word_t;
 #elif (IS_TYPE_UINT == 1)
 typedef ap_uint<DATA_BITWIDTH> word_t;
 #elif (IS_TYPE_FLOAT == 1)
@@ -77,6 +77,9 @@ typedef struct dma_info {
 
 void top(dma_word_t *out, dma_word_t *in1,
 	/* <<--params-->> */
+	 const unsigned conf_info_inv_reset,
+	 const unsigned conf_info_inv_num,
+	 const unsigned conf_info_chunks,
 	 const unsigned conf_info_iter,
 	 const unsigned conf_info_x_dim,
 	 const unsigned conf_info_z_dim,

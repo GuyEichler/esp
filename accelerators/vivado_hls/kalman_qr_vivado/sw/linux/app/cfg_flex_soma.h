@@ -4,7 +4,7 @@
 #define __ESP_CFG_000_H__
 
 #include "libesp.h"
-#include "kalman_vivado.h"
+#include "kalman_qr_vivado.h"
 
 typedef float token_t;
 
@@ -31,7 +31,7 @@ int32_t z_dim = Z_DIM;
 
 #define NACC 1
 
-struct kalman_vivado_access kalman_cfg_000[] = {
+struct kalman_qr_vivado_access kalman_cfg_000[] = {
 	{
 		/* <<--descriptor-->> */
 		.inv_reset = INV_RESET,
@@ -52,8 +52,8 @@ struct kalman_vivado_access kalman_cfg_000[] = {
 esp_thread_info_t cfg_000[] = {
 	{
 		.run = true,
-		.devname = "kalman_vivado.0",
-		.ioctl_req = KALMAN_VIVADO_IOC_ACCESS,
+		.devname = "kalman_qr_vivado.0",
+		.ioctl_req = KALMAN_QR_VIVADO_IOC_ACCESS,
 		.esp_desc = &(kalman_cfg_000[0].esp),
 	}
 };

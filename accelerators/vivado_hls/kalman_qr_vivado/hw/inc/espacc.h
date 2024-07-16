@@ -219,7 +219,7 @@ struct MY_CONFIG : INV_CFG {
 		/* INV_CFG::InternalType> { */
 		word_t> {
 		static const int ARCH = 0;
-		static const int UPDATE_II = 1;
+		static const int UPDATE_II = 2;
 	};
 	struct BACK_SUB_CONFIG :
 		hls::back_substitute_traits<Z_MAX,
@@ -243,7 +243,7 @@ struct MY_CONFIG : INV_CFG {
 		word_t,
 		word_t> {
                 static const int ARCH = 0;
-                static const int INNER_II = 1;
+                static const int INNER_II = 3;
                 //static const int UNROLL_FACTOR = 4;
 	};
 };

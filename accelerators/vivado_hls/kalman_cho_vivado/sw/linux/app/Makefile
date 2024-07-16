@@ -8,6 +8,7 @@ CFLAGS += -L.
 LDFLAGS += -lkalmansw
 CXX := riscv64-unknown-linux-gnu-g++
 
+CFLAGS += -I../../../../../common/
 
 include $(DRIVERS)/common.mk
 

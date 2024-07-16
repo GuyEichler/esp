@@ -47,8 +47,8 @@ using namespace Eigen;
 
 #define STATES 6
 #define NEURONS 164
-#define TIME_STAMPS 500
-#define CHUNKS 100
+#define TIME_STAMPS 100
+#define CHUNKS 1
 #define BATCHES TIME_STAMPS / CHUNKS
 
 // #define STATES 6
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 
     /* <<--params-->> */
     const unsigned inv_reset = 3;
-    const unsigned inv_num = 3;
+    const unsigned inv_num = 1;
     const unsigned chunks = CHUNKS;
     const unsigned iter = BATCHES;
     const unsigned x_dim = STATES;
@@ -300,22 +300,22 @@ int main(int argc, char **argv) {
             if(j < x_dim)
             {
                 outbuff_gold[i/DOWNSMPL * out_words_adj/chunks + j] = (word_t) prediction[STATES * (i+1) + j];
-                if(j == 2){
-                    if(outfile_originalX.is_open()){
-                        float x = real_out[STATES * (i+1) + j];
-                        outfile_originalX << x << std::endl;
-                        float x_pred = prediction[STATES * (i+1) + j];
-                        outfile_sotaX << x_pred << std::endl;
-                    }
-                }
-                if(j == 3){
-                    if(outfile_originalY.is_open()){
-                        float y = real_out[STATES * (i+1) + j];
-                        outfile_originalY << y << std::endl;
-                        float y_pred = prediction[STATES * (i+1) + j];
-                        outfile_sotaY << y_pred << std::endl;
-                    }
-                }
+                // if(j == 2){
+                //     if(outfile_originalX.is_open()){
+                //         float x = real_out[STATES * (i+1) + j];
+                //         outfile_originalX << x << std::endl;
+                //         float x_pred = prediction[STATES * (i+1) + j];
+                //         outfile_sotaX << x_pred << std::endl;
+                //     }
+                // }
+                // if(j == 3){
+                //     if(outfile_originalY.is_open()){
+                //         float y = real_out[STATES * (i+1) + j];
+                //         outfile_originalY << y << std::endl;
+                //         float y_pred = prediction[STATES * (i+1) + j];
+                //         outfile_sotaY << y_pred << std::endl;
+                //     }
+                // }
             }
             else
             {
@@ -325,267 +325,267 @@ int main(int argc, char **argv) {
 
         Matrix<float, NEURONS, NEURONS> Mat_S_iter;
 
-        //Norm check
+        // //Norm check
 
-        //I - A*X_0
-        Matrix<float, NEURONS, NEURONS> res = Mat_S * Mat_S.inverse();
-        Matrix<float, NEURONS, NEURONS> I_res = Matrix<float, NEURONS, NEURONS>::Identity();
-        Matrix<float, NEURONS, NEURONS> final_res = I_res - res;
-        float norm = final_res.norm();
-        std::cout << "Iteration: " << i << " Norm for calculation = " << norm << std::endl;
+        // //I - A*X_0
+        // Matrix<float, NEURONS, NEURONS> res = Mat_S * Mat_S.inverse();
+        // Matrix<float, NEURONS, NEURONS> I_res = Matrix<float, NEURONS, NEURONS>::Identity();
+        // Matrix<float, NEURONS, NEURONS> final_res = I_res - res;
+        // float norm = final_res.norm();
+        // std::cout << "Iteration: " << i << " Norm for calculation = " << norm << std::endl;
 
-        if(outfile_eigen.is_open()){
-            outfile_eigen << norm << std::endl;
-            // if(i != TIME_STAMPS - 1){
-            //     outfile_eigen << ", ";
-            // }
-            // else{
-            //     outfile_eigen << "]";
-            //     outfile_eigen.close();
-            // }
-        }
+        // if(outfile_eigen.is_open()){
+        //     outfile_eigen << norm << std::endl;
+        //     // if(i != TIME_STAMPS - 1){
+        //     //     outfile_eigen << ", ";
+        //     // }
+        //     // else{
+        //     //     outfile_eigen << "]";
+        //     //     outfile_eigen.close();
+        //     // }
+        // }
 
-        //Manual gauss inverse
-        Matrix<float, NEURONS, NEURONS> Mat_S_gauss = Mat_H * (Mat_F * Mat_P_gauss * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
+        // //Manual gauss inverse
+        // Matrix<float, NEURONS, NEURONS> Mat_S_gauss = Mat_H * (Mat_F * Mat_P_gauss * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
 
-        float S_array_gauss[NEURONS][NEURONS] = {{0}};
-        float S_inv_array_gauss[NEURONS][NEURONS] = {{0}};
-
-        for(int k = 0; k < NEURONS; k++)
-            for(int d = 0; d < NEURONS; d++)
-            {
-                //S_inv_array_gauss[k][d] = S_inv(k,d);
-                S_array_gauss[k][d] = Mat_S_gauss(k,d);
-                if(k == d)
-                    S_inv_array_gauss[k][d] = 1.0;
-            }
-
-        int inv_ok = inverse_tb<NEURONS, float>(S_array_gauss, S_inv_array_gauss, z_dim);
-
-        Map<Matrix<float, NEURONS, NEURONS, RowMajor> > Mat_S_inv_gauss(&S_inv_array_gauss[0][0], NEURONS, NEURONS);
-
-        //std::cout << "Eigen: " << Mat_S.inverse() << std::endl;
+        // float S_array_gauss[NEURONS][NEURONS] = {{0}};
+        // float S_inv_array_gauss[NEURONS][NEURONS] = {{0}};
 
         // for(int k = 0; k < NEURONS; k++)
-        // {
-        //     std::cout << std::endl;
         //     for(int d = 0; d < NEURONS; d++)
         //     {
-        //         std::cout << S_inv_array_gauss[k][d] <<" ";
+        //         //S_inv_array_gauss[k][d] = S_inv(k,d);
+        //         S_array_gauss[k][d] = Mat_S_gauss(k,d);
+        //         if(k == d)
+        //             S_inv_array_gauss[k][d] = 1.0;
+        //     }
+
+        // int inv_ok = inverse_tb<NEURONS, float>(S_array_gauss, S_inv_array_gauss, z_dim);
+
+        // Map<Matrix<float, NEURONS, NEURONS, RowMajor> > Mat_S_inv_gauss(&S_inv_array_gauss[0][0], NEURONS, NEURONS);
+
+        // //std::cout << "Eigen: " << Mat_S.inverse() << std::endl;
+
+        // // for(int k = 0; k < NEURONS; k++)
+        // // {
+        // //     std::cout << std::endl;
+        // //     for(int d = 0; d < NEURONS; d++)
+        // //     {
+        // //         std::cout << S_inv_array_gauss[k][d] <<" ";
+        // //     }
+        // // }
+
+        // // std::cout << std::endl;
+
+        // //std::cout << "Gauss: " << Mat_S_inv_gauss << std::endl;
+
+        // Matrix<float, STATES, NEURONS> Mat_K_gauss = (Mat_F * Mat_P_gauss * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * Mat_S_inv_gauss;
+        // Mat_P_gauss = (Mat_I -  Mat_K_gauss * Mat_H) * (Mat_F * Mat_P_gauss * Mat_F.transpose() + Mat_Q);
+
+
+        // //Check gauss norm
+        // Matrix<float, NEURONS, NEURONS> res_gauss = Mat_S_gauss * Mat_S_inv_gauss;
+        // Matrix<float, NEURONS, NEURONS> I_res_gauss = Matrix<float, NEURONS, NEURONS>::Identity();
+        // Matrix<float, NEURONS, NEURONS> final_res_gauss = I_res_gauss - res_gauss;
+        // float norm_gauss = final_res_gauss.norm();
+        // Matrix<float, NEURONS, NEURONS> diff_mat_S_g = Mat_S_gauss - Mat_S;
+        // float diff_g = std::max(diff_mat_S_g.maxCoeff(), (-1)*diff_mat_S_g.minCoeff());
+        // //std::cout << "Iteration: " << i << " Norm for gauss = " << norm_gauss << std::endl;
+        // //std::cout << "Iteration: " << i << " max diff from gauss = " << diff_g << std::endl;
+        // // JacobiSVD<MatrixXf> svd(Mat_S_gauss);
+        // // VectorXf singularValues = svd.singularValues();
+        // // double cond_spectral = singularValues.maxCoeff() / singularValues.minCoeff();
+        // // std::cout << "Condition for gauss: " << cond_spectral << std::endl;
+        // // double det_gauss = Mat_S_gauss.determinant();;
+        // // std::cout << "Determinant gauss: " << det_gauss << std::endl;
+
+        // if(outfile_gauss.is_open()){
+        //     outfile_gauss << norm_gauss << std::endl;
+        //     // if(i != TIME_STAMPS - 1){
+        //     //     outfile_gauss << ", ";
+        //     // }
+        //     // else{
+        //     //     outfile_gauss << "]";
+        //     //     outfile_gauss.close();
+        //     // }
+        // }
+
+        // //If we are in the first time stamp the norm of newton is the same as gauss
+        // if(i == 0){
+        //     if(outfile_newton.is_open()){
+        //         outfile_newton << norm_gauss << std::endl;
+        //         outfile_newton_final << norm_gauss << std::endl;
+        //         // if(i != TIME_STAMPS - 1){
+        //         //     outfile_newton << ", ";
+        //         // }
+        //         // else{
+        //         //     outfile_newton << "]";
+        //         //     outfile_newton.close();
+        //         // }
         //     }
         // }
 
-        // std::cout << std::endl;
 
-        //std::cout << "Gauss: " << Mat_S_inv_gauss << std::endl;
+        // //Iterative inverse
+        // if(i > 0)
+        // {
 
-        Matrix<float, STATES, NEURONS> Mat_K_gauss = (Mat_F * Mat_P_gauss * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * Mat_S_inv_gauss;
-        Mat_P_gauss = (Mat_I -  Mat_K_gauss * Mat_H) * (Mat_F * Mat_P_gauss * Mat_F.transpose() + Mat_Q);
+        //     Mat_S_iter = Mat_H * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
 
+        //     //Check iterative norm
+        //     //Calculate with the iterative norm
+        //     Matrix<float, NEURONS, NEURONS> res_iter = Mat_S_iter * prev_S_inv_iter;
+        //     Matrix<float, NEURONS, NEURONS> I_res_iter = Matrix<float, NEURONS, NEURONS>::Identity();
+        //     Matrix<float, NEURONS, NEURONS> final_res_iter = I_res_iter - res_iter;
+        //     float norm_iter = final_res_iter.norm();
+        //     // Matrix<float, NEURONS, NEURONS> diff_mat_S = Mat_S_iter - Mat_S;
+        //     // float diff = std::max(diff_mat_S.maxCoeff(), (-1)*diff_mat_S.minCoeff());
+        //     //std::cout << "Iteration: " << i << " Norm for approximation = " << norm_iter << std::endl;
+        //     //std::cout << "Iteration: " << i << " max diff = " << diff << std::endl;
 
-        //Check gauss norm
-        Matrix<float, NEURONS, NEURONS> res_gauss = Mat_S_gauss * Mat_S_inv_gauss;
-        Matrix<float, NEURONS, NEURONS> I_res_gauss = Matrix<float, NEURONS, NEURONS>::Identity();
-        Matrix<float, NEURONS, NEURONS> final_res_gauss = I_res_gauss - res_gauss;
-        float norm_gauss = final_res_gauss.norm();
-        Matrix<float, NEURONS, NEURONS> diff_mat_S_g = Mat_S_gauss - Mat_S;
-        float diff_g = std::max(diff_mat_S_g.maxCoeff(), (-1)*diff_mat_S_g.minCoeff());
-        //std::cout << "Iteration: " << i << " Norm for gauss = " << norm_gauss << std::endl;
-        //std::cout << "Iteration: " << i << " max diff from gauss = " << diff_g << std::endl;
-        // JacobiSVD<MatrixXf> svd(Mat_S_gauss);
-        // VectorXf singularValues = svd.singularValues();
-        // double cond_spectral = singularValues.maxCoeff() / singularValues.minCoeff();
-        // std::cout << "Condition for gauss: " << cond_spectral << std::endl;
-        // double det_gauss = Mat_S_gauss.determinant();;
-        // std::cout << "Determinant gauss: " << det_gauss << std::endl;
+        //     if(counter < inv_reset || inv_reset == 0){
+        //         if(outfile_newton.is_open()){
+        //             outfile_newton << norm_iter << std::endl;
+        //         }
+        //     }
 
-        if(outfile_gauss.is_open()){
-            outfile_gauss << norm_gauss << std::endl;
-            // if(i != TIME_STAMPS - 1){
-            //     outfile_gauss << ", ";
-            // }
-            // else{
-            //     outfile_gauss << "]";
-            //     outfile_gauss.close();
-            // }
-        }
+        //     //Initial condition
+        //     // //Set the initial condition to the previous gauss
+        //     // Matrix<float, NEURONS, NEURONS> S_inv =  prev_S_inv;
+        //     //Set the initial condition to the previous newton
+        //     Matrix<float, NEURONS, NEURONS> S_inv =  prev_S_inv_iter;
 
-        //If we are in the first time stamp the norm of newton is the same as gauss
-        if(i == 0){
-            if(outfile_newton.is_open()){
-                outfile_newton << norm_gauss << std::endl;
-                outfile_newton_final << norm_gauss << std::endl;
-                // if(i != TIME_STAMPS - 1){
-                //     outfile_newton << ", ";
-                // }
-                // else{
-                //     outfile_newton << "]";
-                //     outfile_newton.close();
-                // }
-            }
-        }
+        //     //std::cout << "prev S inv: " << S_inv << std::endl;
 
+        //     float S_inv_array[NEURONS][NEURONS] = {{0}};
+        //     float Mat_S_array[NEURONS][NEURONS] = {{0}};
+        //     //Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&next_out[0][0], N, N);
+        //     Matrix<float, NEURONS, NEURONS> S_inv_final;
+        //     float S_inv_final_array[NEURONS][NEURONS] = {{0}};
+        //     Matrix<float, NEURONS, NEURONS> S_inv_final2;
+        //     float S_inv_final2_array[NEURONS][NEURONS] = {{0}};
+        //     for(int k = 0; k < NEURONS; k++)
+        //         for(int d = 0; d < NEURONS; d++)
+        //         {
+        //             S_inv_array[k][d] = S_inv(k,d);
+        //             Mat_S_array[k][d] = Mat_S_iter(k,d);
+        //         }
 
-        //Iterative inverse
-        if(i > 0)
-        {
+        //     //Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&next_out[0][0], N, N);
 
-            Mat_S_iter = Mat_H * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
+        //     for(unsigned l = 0; l < inv_num; l++){
+        //         if(l == 0){
+        //             iterative_inverse_tb<NEURONS>(Mat_S_array, S_inv_array, S_inv_final_array, z_dim);
+        //             //std::cout << "Iterative 0" << std::endl;
+        //         }
+        //         else if(l % 2 == 1){
+        //             iterative_inverse_tb<NEURONS>(Mat_S_array, S_inv_final_array, S_inv_final2_array, z_dim);
+        //             //std::cout << "Iterative 1" << std::endl;
+        //         }
+        //         else{// if(i % 2 == 0){
+        //             iterative_inverse_tb<NEURONS>(Mat_S_array, S_inv_final2_array, S_inv_final_array, z_dim);
+        //             //std::cout << "Iterative 2" << std::endl;
+        //         }
+        //     }
 
-            //Check iterative norm
-            //Calculate with the iterative norm
-            Matrix<float, NEURONS, NEURONS> res_iter = Mat_S_iter * prev_S_inv_iter;
-            Matrix<float, NEURONS, NEURONS> I_res_iter = Matrix<float, NEURONS, NEURONS>::Identity();
-            Matrix<float, NEURONS, NEURONS> final_res_iter = I_res_iter - res_iter;
-            float norm_iter = final_res_iter.norm();
-            // Matrix<float, NEURONS, NEURONS> diff_mat_S = Mat_S_iter - Mat_S;
-            // float diff = std::max(diff_mat_S.maxCoeff(), (-1)*diff_mat_S.minCoeff());
-            //std::cout << "Iteration: " << i << " Norm for approximation = " << norm_iter << std::endl;
-            //std::cout << "Iteration: " << i << " max diff = " << diff << std::endl;
+        //     if(counter < inv_reset || inv_reset == 0)
+        //     {
+        //         if(inv_num % 2 == 0)
+        //         {//final2
+        //             Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&S_inv_final2_array[0][0], NEURONS, NEURONS);
+        //             prev_S_inv_iter = iterative_out;
+        //             //std::cout << "Set final 2" << std::endl;
+        //         }
+        //         else
+        //         {//final
+        //             Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&S_inv_final_array[0][0], NEURONS, NEURONS);
+        //             prev_S_inv_iter = iterative_out;
+        //             //std::cout << "Set final 1" << std::endl;
+        //         }
 
-            if(counter < inv_reset || inv_reset == 0){
-                if(outfile_newton.is_open()){
-                    outfile_newton << norm_iter << std::endl;
-                }
-            }
+        //         Matrix<float, STATES, NEURONS> Mat_K_iter = (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * prev_S_inv_iter;//Mat_S.inverse();
+        //         Mat_P_iter = (Mat_I -  Mat_K_iter * Mat_H) * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q);
 
-            //Initial condition
-            // //Set the initial condition to the previous gauss
-            // Matrix<float, NEURONS, NEURONS> S_inv =  prev_S_inv;
-            //Set the initial condition to the previous newton
-            Matrix<float, NEURONS, NEURONS> S_inv =  prev_S_inv_iter;
+        //         //Calculate with the final iterative norm
+        //         Matrix<float, NEURONS, NEURONS> res_iter_final = Mat_S_iter * prev_S_inv_iter;
+        //         Matrix<float, NEURONS, NEURONS> I_res_iter_final = Matrix<float, NEURONS, NEURONS>::Identity();
+        //         Matrix<float, NEURONS, NEURONS> final_res_iter_final = I_res_iter_final - res_iter_final;
+        //         float norm_iter_final = final_res_iter_final.norm();
 
-            //std::cout << "prev S inv: " << S_inv << std::endl;
+        //         // JacobiSVD<MatrixXf> svd_iter(Mat_S_iter);
+        //         // VectorXf singularValues_iter = svd_iter.singularValues();
+        //         // double cond_spectral_iter = singularValues_iter.maxCoeff() / singularValues_iter.minCoeff();
+        //         // std::cout << "Condition for newton: " << cond_spectral_iter
+        //         // << std::endl;
+        //         // double det_iter = Mat_S_iter.determinant();;
+        //         // std::cout << "Determinant newton: " << det_iter << std::endl;
 
-            float S_inv_array[NEURONS][NEURONS] = {{0}};
-            float Mat_S_array[NEURONS][NEURONS] = {{0}};
-            //Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&next_out[0][0], N, N);
-            Matrix<float, NEURONS, NEURONS> S_inv_final;
-            float S_inv_final_array[NEURONS][NEURONS] = {{0}};
-            Matrix<float, NEURONS, NEURONS> S_inv_final2;
-            float S_inv_final2_array[NEURONS][NEURONS] = {{0}};
-            for(int k = 0; k < NEURONS; k++)
-                for(int d = 0; d < NEURONS; d++)
-                {
-                    S_inv_array[k][d] = S_inv(k,d);
-                    Mat_S_array[k][d] = Mat_S_iter(k,d);
-                }
+        //         if(outfile_newton.is_open()){
+        //             outfile_newton_final << norm_iter_final << std::endl;
+        //         }
 
-            //Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&next_out[0][0], N, N);
+        //         counter++;
+        //     }
+        //     else
+        //     {
+        //         //std::cout << "HERE" << std::endl;
+        //         Mat_S_iter = Mat_H * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
 
-            for(unsigned l = 0; l < inv_num; l++){
-                if(l == 0){
-                    iterative_inverse_tb<NEURONS>(Mat_S_array, S_inv_array, S_inv_final_array, z_dim);
-                    //std::cout << "Iterative 0" << std::endl;
-                }
-                else if(l % 2 == 1){
-                    iterative_inverse_tb<NEURONS>(Mat_S_array, S_inv_final_array, S_inv_final2_array, z_dim);
-                    //std::cout << "Iterative 1" << std::endl;
-                }
-                else{// if(i % 2 == 0){
-                    iterative_inverse_tb<NEURONS>(Mat_S_array, S_inv_final2_array, S_inv_final_array, z_dim);
-                    //std::cout << "Iterative 2" << std::endl;
-                }
-            }
+        //         //Manual gauss inverse
+        //         float S_array_gauss_iter[NEURONS][NEURONS] = {{0}};
+        //         float S_inv_array_gauss_iter[NEURONS][NEURONS] = {{0}};
 
-            if(counter < inv_reset || inv_reset == 0)
-            {
-                if(inv_num % 2 == 0)
-                {//final2
-                    Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&S_inv_final2_array[0][0], NEURONS, NEURONS);
-                    prev_S_inv_iter = iterative_out;
-                    //std::cout << "Set final 2" << std::endl;
-                }
-                else
-                {//final
-                    Map<Matrix<float, NEURONS, NEURONS, RowMajor> > iterative_out(&S_inv_final_array[0][0], NEURONS, NEURONS);
-                    prev_S_inv_iter = iterative_out;
-                    //std::cout << "Set final 1" << std::endl;
-                }
+        //         for(int k = 0; k < NEURONS; k++)
+        //             for(int d = 0; d < NEURONS; d++)
+        //             {
+        //                 //S_inv_array_gauss[k][d] = S_inv(k,d);
+        //                 S_array_gauss_iter[k][d] = Mat_S_iter(k,d);
+        //                 if(k == d)
+        //                     S_inv_array_gauss_iter[k][d] = 1.0;
+        //             }
 
-                Matrix<float, STATES, NEURONS> Mat_K_iter = (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * prev_S_inv_iter;//Mat_S.inverse();
-                Mat_P_iter = (Mat_I -  Mat_K_iter * Mat_H) * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q);
+        //         int inv_ok = inverse_tb<NEURONS, float>(S_array_gauss_iter, S_inv_array_gauss_iter, z_dim);
 
-                //Calculate with the final iterative norm
-                Matrix<float, NEURONS, NEURONS> res_iter_final = Mat_S_iter * prev_S_inv_iter;
-                Matrix<float, NEURONS, NEURONS> I_res_iter_final = Matrix<float, NEURONS, NEURONS>::Identity();
-                Matrix<float, NEURONS, NEURONS> final_res_iter_final = I_res_iter_final - res_iter_final;
-                float norm_iter_final = final_res_iter_final.norm();
+        //         Map<Matrix<float, NEURONS, NEURONS, RowMajor> > Mat_S_inv_gauss_iter(&S_inv_array_gauss[0][0], NEURONS, NEURONS);
+        //         prev_S_inv_iter = Mat_S_inv_gauss_iter;
 
-                // JacobiSVD<MatrixXf> svd_iter(Mat_S_iter);
-                // VectorXf singularValues_iter = svd_iter.singularValues();
-                // double cond_spectral_iter = singularValues_iter.maxCoeff() / singularValues_iter.minCoeff();
-                // std::cout << "Condition for newton: " << cond_spectral_iter
-                // << std::endl;
-                // double det_iter = Mat_S_iter.determinant();;
-                // std::cout << "Determinant newton: " << det_iter << std::endl;
+        //         Matrix<float, STATES, NEURONS> Mat_K_iter = (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * prev_S_inv_iter;//Mat_S.inverse();
+        //         Mat_P_iter = (Mat_I -  Mat_K_iter * Mat_H) * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q);
 
-                if(outfile_newton.is_open()){
-                    outfile_newton_final << norm_iter_final << std::endl;
-                }
+        //         Matrix<float, NEURONS, NEURONS> res_iter_gauss = Mat_S_iter * prev_S_inv_iter;
+        //         Matrix<float, NEURONS, NEURONS> I_res_iter_gauss = Matrix<float, NEURONS, NEURONS>::Identity();
+        //         Matrix<float, NEURONS, NEURONS> final_res_iter_gauss = I_res_iter_gauss - res_iter_gauss;
+        //         float norm_iter_gauss = final_res_iter_gauss.norm();
 
-                counter++;
-            }
-            else
-            {
-                //std::cout << "HERE" << std::endl;
-                Mat_S_iter = Mat_H * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() + Mat_R;
+        //         // JacobiSVD<MatrixXf> svd_iter_gauss(Mat_S_iter);
+        //         // VectorXf singularValues_iter_gauss = svd_iter_gauss.singularValues();
+        //         // double cond_spectral_iter_gauss = singularValues_iter_gauss.maxCoeff() / singularValues_iter_gauss.minCoeff();
+        //         // std::cout << "Condition for newton (gauss): " << cond_spectral_iter_gauss << std::endl;
+        //         // double det_iter_gauss = Mat_S_iter.determinant();
+        //         // std::cout << "Determinant newton: " << det_iter_gauss << std::endl;
 
-                //Manual gauss inverse
-                float S_array_gauss_iter[NEURONS][NEURONS] = {{0}};
-                float S_inv_array_gauss_iter[NEURONS][NEURONS] = {{0}};
+        //         if(outfile_newton.is_open()){
+        //             outfile_newton << norm_iter_gauss << std::endl;
+        //             outfile_newton_final << norm_iter_gauss << std::endl;
+        //         }
 
-                for(int k = 0; k < NEURONS; k++)
-                    for(int d = 0; d < NEURONS; d++)
-                    {
-                        //S_inv_array_gauss[k][d] = S_inv(k,d);
-                        S_array_gauss_iter[k][d] = Mat_S_iter(k,d);
-                        if(k == d)
-                            S_inv_array_gauss_iter[k][d] = 1.0;
-                    }
+        //         counter = 1;
+        //     }
+        // }
+        // else
+        // {
+        //     //prev_S_inv_iter = Mat_S.inverse();
+        //     prev_S_inv_iter = Mat_S_inv_gauss;
+        //     //Mat_P_iter = Mat_P;
+        //     Mat_P_iter = Mat_P_gauss;
+        // }
 
-                int inv_ok = inverse_tb<NEURONS, float>(S_array_gauss_iter, S_inv_array_gauss_iter, z_dim);
-
-                Map<Matrix<float, NEURONS, NEURONS, RowMajor> > Mat_S_inv_gauss_iter(&S_inv_array_gauss[0][0], NEURONS, NEURONS);
-                prev_S_inv_iter = Mat_S_inv_gauss_iter;
-
-                Matrix<float, STATES, NEURONS> Mat_K_iter = (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q) * Mat_H.transpose() * prev_S_inv_iter;//Mat_S.inverse();
-                Mat_P_iter = (Mat_I -  Mat_K_iter * Mat_H) * (Mat_F * Mat_P_iter * Mat_F.transpose() + Mat_Q);
-
-                Matrix<float, NEURONS, NEURONS> res_iter_gauss = Mat_S_iter * prev_S_inv_iter;
-                Matrix<float, NEURONS, NEURONS> I_res_iter_gauss = Matrix<float, NEURONS, NEURONS>::Identity();
-                Matrix<float, NEURONS, NEURONS> final_res_iter_gauss = I_res_iter_gauss - res_iter_gauss;
-                float norm_iter_gauss = final_res_iter_gauss.norm();
-
-                // JacobiSVD<MatrixXf> svd_iter_gauss(Mat_S_iter);
-                // VectorXf singularValues_iter_gauss = svd_iter_gauss.singularValues();
-                // double cond_spectral_iter_gauss = singularValues_iter_gauss.maxCoeff() / singularValues_iter_gauss.minCoeff();
-                // std::cout << "Condition for newton (gauss): " << cond_spectral_iter_gauss << std::endl;
-                // double det_iter_gauss = Mat_S_iter.determinant();
-                // std::cout << "Determinant newton: " << det_iter_gauss << std::endl;
-
-                if(outfile_newton.is_open()){
-                    outfile_newton << norm_iter_gauss << std::endl;
-                    outfile_newton_final << norm_iter_gauss << std::endl;
-                }
-
-                counter = 1;
-            }
-        }
-        else
-        {
-            //prev_S_inv_iter = Mat_S.inverse();
-            prev_S_inv_iter = Mat_S_inv_gauss;
-            //Mat_P_iter = Mat_P;
-            Mat_P_iter = Mat_P_gauss;
-        }
-
-
-        //Update prev_S_inv
-        prev_S_inv = Mat_S.inverse();
 
         // //Update prev_S_inv
-        // prev_S_inv_gauss = Mat_S.inverse();
+        // prev_S_inv = Mat_S.inverse();
+
+        // // //Update prev_S_inv
+        // // prev_S_inv_gauss = Mat_S.inverse();
 
     }
 
@@ -655,18 +655,18 @@ int main(int argc, char **argv) {
             if(j%(x_dim + x_dim*x_dim) < x_dim){
                 //std::cout << "OKAY: X Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;
 
-                if(j%(x_dim + x_dim*x_dim) == 2){
-                    if(outfile_predictionX.is_open()){
-                        word_t x = acc_val;
-                        outfile_predictionX << x << std::endl;
-                    }
-                }
-                else if(j%(x_dim + x_dim*x_dim) == 3){
-                    if(outfile_predictionY.is_open()){
-                        word_t y = acc_val;
-                        outfile_predictionY << y << std::endl;
-                    }
-                }
+                // if(j%(x_dim + x_dim*x_dim) == 2){
+                //     if(outfile_predictionX.is_open()){
+                //         word_t x = acc_val;
+                //         outfile_predictionX << x << std::endl;
+                //     }
+                // }
+                // else if(j%(x_dim + x_dim*x_dim) == 3){
+                //     if(outfile_predictionY.is_open()){
+                //         word_t y = acc_val;
+                //         outfile_predictionY << y << std::endl;
+                //     }
+                // }
             }
             // else
             //     std::cout << "P Accelerator value: " << acc_val << " Golden value: " << gold_val << " index: " << i * out_words_adj + j << " Iter " << i << " diff: " << diff << std::endl;

@@ -35,7 +35,7 @@ static unsigned DMA_WORD_PER_BEAT(unsigned _st)
 #define STATES 6
 #define NEURONS 164
 #define TIME_STAMPS 10
-#define CHUNKS 10
+#define CHUNKS 1
 #define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-->> */

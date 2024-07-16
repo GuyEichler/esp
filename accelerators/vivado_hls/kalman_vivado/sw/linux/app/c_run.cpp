@@ -22,8 +22,8 @@ void run_kalman()
 	std::cout << "\n\nTEST: Use Kalman filter on neural decoding data from the motor cortex\n\n" << std::endl;
 
 	const int states = 6;
-	const int neurons = 46;
-	const int time_stamps = 2;//3793;
+	const int neurons = 164;
+	const int time_stamps = 10;//3793;
 /*	const int states = 6;
 	const int neurons = 52;
 	const int time_stamps = 9199;*/

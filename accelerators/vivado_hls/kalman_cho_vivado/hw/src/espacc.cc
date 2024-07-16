@@ -457,6 +457,10 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
         }
     }
 
+    if(curr_batch == 0)
+    {
+        inv_counter = 1;
+    }
 
     compute_loop:
 
@@ -465,10 +469,12 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
     if(c < chunks){
     // if(enable){
 
-    if(curr_batch == 0 && c == 0)
-    {
-        inv_counter = 1;
-    }
+#ifndef __SYNTHESIS__
+    printf("inv_counter = %d\n", inv_counter);
+    printf("curr_batch = %d\n", curr_batch);
+    printf("c = %d\n", c);
+    printf("pingpong = %d\n", pingpong);
+#endif
 
     //Compute inter1 = F x P
     if(pingpong)
@@ -582,7 +588,8 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv_final[i][j] = 1.0;
                     S_inv_final2[i][j] = 1.0;
                 }
-                else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
+                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
                 {
                     //printf("HERE\n");
                     word_t tmp = S_inv_final[i][j];
@@ -601,7 +608,8 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv_final[i][j] = 0.0;
                     S_inv_final2[i][j] = 0.0;
                 }
-                else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
+                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
                 {
                     word_t tmp = S_inv_final[i][j];
                     word_t tmp2 = S_inv_final2[i][j];

@@ -17,7 +17,7 @@
 
 #define X_MAX 6
 #define Z_MAX 164
-#define CHUNK_MAX 100
+#define CHUNK_MAX 1
 
 #define SIZE_IN_CHUNK_DATA Z_MAX+X_MAX+X_MAX*X_MAX*3+Z_MAX*Z_MAX+Z_MAX*X_MAX
 

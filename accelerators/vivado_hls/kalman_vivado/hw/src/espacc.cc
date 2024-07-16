@@ -457,6 +457,10 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
         }
     }
 
+    if(curr_batch == 0)
+    {
+        inv_counter = 1;
+    }
 
     compute_loop:
 
@@ -465,10 +469,17 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
     if(c < chunks){
     // if(enable){
 
-    if(curr_batch == 0 && c == 0)
-    {
-        inv_counter = 1;
-    }
+#ifndef __SYNTHESIS__
+    printf("inv_counter = %d\n", inv_counter);
+    printf("curr_batch = %d\n", curr_batch);
+    printf("c = %d\n", c);
+    printf("pingpong = %d\n", pingpong);
+#endif
+
+// #ifndef __SYNTHESIS__
+//     printf("Z = \n");
+//     hls::print_matrix<CHUNK_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])Z, "   ");
+// #endif
 
     //Compute inter1 = F x P
     if(pingpong)
@@ -581,10 +592,13 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv[i][j] = 1.0;
                     S_inv_final[i][j] = 1.0;
                     S_inv_final2[i][j] = 1.0;
+                    // after_reset = true;
                 }
-                else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
-                {
-                    //printf("HERE\n");
+                //else if(after_reset == false)
+                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
+                {//Comment this block to change policy
+                    //printf("inv_counter is: %d\n", inv_counter);
                     word_t tmp = S_inv_final[i][j];
                     word_t tmp2 = S_inv_final2[i][j];
                     if(inv_num % 2 == 0)// && c > 1)
@@ -601,8 +615,10 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv_final[i][j] = 0.0;
                     S_inv_final2[i][j] = 0.0;
                 }
-                else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
-                {
+                //else if(after_reset == false)
+                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
+                {//Comment this block to change policy
                     word_t tmp = S_inv_final[i][j];
                     word_t tmp2 = S_inv_final2[i][j];
                     if(inv_num % 2 == 0)// && c > 1)
@@ -610,10 +626,18 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     else// if (c > 1)
                         S_inv[i][j] = tmp;
                 }
+
+                // if(i == Z_MAX && j == Z_MAX && after_reset == true)
+                //     after_reset = false;
             }
 
         }
     // init_s_inv(S_inv, z_dim);
+
+// #ifndef __SYNTHESIS__
+//     printf("S_inv = \n");
+//     hls::print_matrix<Z_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])S_inv, "   ");
+// #endif
 
     if((curr_batch == 0 && c == 0) || inv_num == 0 || inv_counter == inv_reset)
     {
@@ -647,7 +671,7 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
 
 
 #ifndef __SYNTHESIS__
-    printf("inv_ok = %d\n", inv_ok);
+    //printf("inv_ok = %d\n", inv_ok);
     // printf("S_inv = \n");
     // hls::print_matrix<Z_MAX, Z_MAX, word_t, hls::NoTranspose>((word_t(*)[Z_MAX])S_inv, "   ");
 #endif
@@ -898,6 +922,15 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
 
         }
     }
+
+#ifndef __SYNTHESIS__
+    // printf("X_pred = \n");
+    // if(pingpong)
+    //     hls::print_matrix<1, X_MAX, word_t, hls::NoTranspose>((word_t(*)[X_MAX])X_pred_pong, "   ");
+    // else
+    //     hls::print_matrix<1, X_MAX, word_t, hls::NoTranspose>((word_t(*)[X_MAX])X_pred_ping, "   ");
+#endif
+
     // compute_out(_outbuff, X_pred, P_pred, x_dim, curr_chunk);
     pingpong = !pingpong;
     if(inv_counter < inv_reset)

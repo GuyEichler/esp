@@ -23,14 +23,14 @@
 #define SIZE 1000
 
 
-/* #include "A_array.h" */
-/* #include "H_array.h" */
-/* #include "W_array.h" */
-/* #include "Q_array.h" */
-/* #include "initial_state_array.h" */
-/* #include "measurements_array.h" */
-/* #include "prediction_array.h" */
-/* #include "real_array.h" */
+#include "A_array.h"
+#include "H_array.h"
+#include "W_array.h"
+#include "Q_array.h"
+#include "initial_state_array.h"
+#include "measurements_array.h"
+#include "prediction_array.h"
+#include "real_array.h"
 
 
 /* #include "A_array_soma.h" */
@@ -42,14 +42,14 @@
 /* #include "prediction_array_soma.h" */
 /* #include "real_array_soma.h" */
 
-#include "A_array_hc.h"
-#include "H_array_hc.h"
-#include "W_array_hc.h"
-#include "Q_array_hc.h"
-#include "initial_state_array_hc.h"
-#include "measurements_array_hc.h"
-#include "prediction_array_hc.h"
-#include "real_array_hc.h"
+/* #include "A_array_hc.h" */
+/* #include "H_array_hc.h" */
+/* #include "W_array_hc.h" */
+/* #include "Q_array_hc.h" */
+/* #include "initial_state_array_hc.h" */
+/* #include "measurements_array_hc.h" */
+/* #include "prediction_array_hc.h" */
+/* #include "real_array_hc.h" */
 
 
 /* #include "inverse.h" */

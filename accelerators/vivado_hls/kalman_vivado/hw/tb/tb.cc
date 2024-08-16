@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     printf("****start*****\n");
 
     /* <<--params-->> */
-    const unsigned inv_reset = 3;
+    const unsigned inv_reset = 0;
     const unsigned inv_num = 1;
     const unsigned chunks = CHUNKS;
     const unsigned iter = BATCHES;

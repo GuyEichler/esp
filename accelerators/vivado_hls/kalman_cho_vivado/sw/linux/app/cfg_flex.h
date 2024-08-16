@@ -11,15 +11,15 @@ typedef float token_t;
 #define STATES 6
 #define NEURONS 164
 #define TIME_STAMPS 100
-#define CHUNKS 100
+#define CHUNKS 1
 #define BATCHES TIME_STAMPS / CHUNKS
 
 /* <<--params-def-->> */
 #define ITER BATCHES
 #define X_DIM STATES
 #define Z_DIM NEURONS
-#define INV_NUM 2
-#define INV_RESET 3
+#define INV_NUM 1
+#define INV_RESET 0
 
 /* <<--params-->> */
 int32_t inv_reset = INV_RESET;

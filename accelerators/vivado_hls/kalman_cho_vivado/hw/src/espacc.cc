@@ -588,7 +588,7 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv_final[i][j] = 1.0;
                     S_inv_final2[i][j] = 1.0;
                 }
-                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                else if ((inv_counter > 1 || inv_reset == 0) && (curr_batch * chunks + c != 1))
                 //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
                 {
                     //printf("HERE\n");
@@ -608,7 +608,7 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv_final[i][j] = 0.0;
                     S_inv_final2[i][j] = 0.0;
                 }
-                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                else if ((inv_counter > 1 || inv_reset == 0) && (curr_batch * chunks + c != 1))
                 //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
                 {
                     word_t tmp = S_inv_final[i][j];

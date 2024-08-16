@@ -18,8 +18,8 @@ typedef float token_t;
 #define ITER BATCHES
 #define X_DIM STATES
 #define Z_DIM NEURONS
-#define INV_NUM 2
-#define INV_RESET 3
+#define INV_NUM 1
+#define INV_RESET 0
 
 /* <<--params-->> */
 int32_t inv_reset = INV_RESET;

@@ -595,7 +595,7 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     // after_reset = true;
                 }
                 //else if(after_reset == false)
-                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                else if ((inv_counter > 1 || inv_reset == 0) && (curr_batch * chunks + c != 1))
                 //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
                 {//Comment this block to change policy
                     //printf("inv_counter is: %d\n", inv_counter);
@@ -616,7 +616,7 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
                     S_inv_final2[i][j] = 0.0;
                 }
                 //else if(after_reset == false)
-                else if (inv_counter > 1 && (curr_batch * chunks + c != 1))
+                else if ((inv_counter > 1 || inv_reset == 0) && (curr_batch * chunks + c != 1))
                 //else if ((curr_batch != 0 || c > 1) && (inv_counter > 1 || inv_reset == 0))
                 {//Comment this block to change policy
                     word_t tmp = S_inv_final[i][j];

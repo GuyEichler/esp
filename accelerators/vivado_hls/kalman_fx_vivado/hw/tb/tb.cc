@@ -42,7 +42,7 @@ using namespace Eigen;
 
 #define STATES 6
 #define NEURONS 164
-#define TIME_STAMPS 5
+#define TIME_STAMPS 100
 #define CHUNKS 1
 #define BATCHES TIME_STAMPS / CHUNKS
 

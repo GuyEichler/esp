@@ -720,7 +720,7 @@ void compute(word_t Z[CHUNK_MAX][Z_MAX],
         if(i == 0 && ((curr_batch == 0 && c == 0) || inv_counter == inv_reset)){
             iterative_inverse<Z_MAX>(S, S_inv, S_inv_final, z_dim);
             inv_pingpong = true;
-            printf("HERE\n");
+            //printf("HERE\n");
         }
         else if(inv_pingpong == true){
             iterative_inverse<Z_MAX>(S, S_inv_final, S_inv_final2, z_dim);

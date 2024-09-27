@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 
     /* <<--params-->> */
     const unsigned inv_reset = 0;
-    const unsigned inv_num = 1;
+    const unsigned inv_num = 0;
     const unsigned chunks = CHUNKS;
     const unsigned iter = BATCHES;
     const unsigned x_dim = STATES;

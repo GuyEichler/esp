@@ -765,13 +765,17 @@ void iterative_inverse(comp_word_t new_mat[DIM][DIM], comp_word_t out[DIM][DIM],
          #pragma HLS loop_tripcount max=164
                     #pragma HLS PIPELINE
                     #pragma HLS dependence variable=new_out inter false
+                    #pragma HLS unroll factor=8
 			/* if(i < z_dim && j < z_dim) */
+   			        word_t tmp = new_out[i][j];
+				word_t result;
 				if(i == j){
-					new_out[i][j] = 2 - new_out[i][j];
+					result = 2 - tmp;
 				}
 				else{
-					new_out[i][j] = 0 - new_out[i][j];
+					result = 0 - tmp;
 				}
+				new_out[i][j] = result;
 	}
 
 	//X_n*(2I-A*X_n)

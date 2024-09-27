@@ -66,8 +66,12 @@ $(RTL_CFG_BUILD):
 	$(QUIET_MKDIR)mkdir -p $(RTL_CFG_BUILD)
 
 check_all_srcs: $(GRLIB_CFG_BUILD)/grlib_config.vhd $(ESP_CFG_BUILD)/socmap.vhd socketgen $(ESP_CFG_BUILD)/plic_regmap.sv $(RTL_CFG_BUILD)
-	@echo $(ALL_SIM_SRCS) > $@.new; \
-	if test -f $(RTL_CFG_BUILD)/$@.old; then \
+	@echo $(SIM_VHDL_PKGS) > $@.new;
+	@echo $(SIM_VHDL_SRCS) >> $@.new;
+	@echo $(SIM_VLOG_SRCS) >> $@.new;
+	@echo $(IP_XCI_SRCS) >> $@.new;
+	@echo $(DAT_SRCS) >> $@.new;
+	@if test -f $(RTL_CFG_BUILD)/$@.old; then \
 		/usr/bin/diff -q $(RTL_CFG_BUILD)/$@.old $@.new > /dev/null; \
 		if [ $$? -eq 0 ]; then \
 			rm $@.new; \
@@ -88,8 +92,17 @@ check_all_srcs-distclean:
 .PHONY: check_all_srcs check_all_srcs-distclean
 
 check_all_rtl_srcs: $(GRLIB_CFG_BUILD)/grlib_config.vhd $(ESP_CFG_BUILD)/socmap.vhd socketgen $(ESP_CFG_BUILD)/plic_regmap.sv $(RTL_CFG_BUILD)
-	@echo $(ALL_RTL_SRCS) > $@.new; \
-	if test -f $@.old; then \
+	@echo "Number of lines in VHDL_PKGS: $(words $(VHDL_PKGS))";
+	@echo "Number of lines in VHDL_SRCS: $(words $(VHDL_SRCS))";
+	@echo "Number of lines in VLOG_SRCS: $(words $(VLOG_SRCS))";
+	@echo "Number of lines in IP_XCI_SRCS: $(words $(IP_XCI_SRCS))";
+	@echo "Number of lines in DAT_SRCS: $(words $(DAT_SRCS))";
+	@echo $(VHDL_PKGS) > $@.new;
+	@echo $(VHDL_SRCS) >> $@.new;
+	@echo $(VLOG_SRCS) >> $@.new;
+	@echo $(IP_XCI_SRCS) >> $@.new;
+	@echo $(DAT_SRCS) >> $@.new;
+	@if test -f $(RTL_CFG_BUILD)/$@.old; then \
 		/usr/bin/diff -q $(RTL_CFG_BUILD)/$@.old $@.new > /dev/null; \
 		if [ $$? -eq 0 ]; then \
 			rm $@.new; \
@@ -99,6 +112,7 @@ check_all_rtl_srcs: $(GRLIB_CFG_BUILD)/grlib_config.vhd $(ESP_CFG_BUILD)/socmap.
 	else \
 		mv $@.new $(RTL_CFG_BUILD)/$@.old; \
 	fi;
+
 
 check_all_rtl_srcs-distclean:
 	$(QUIET_CLEAN)rm -rf $(RTL_CFG_BUILD)/check_all_rtl_srcs.old

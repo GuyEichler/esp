@@ -24,23 +24,26 @@ static unsigned out_offset;
 static unsigned size;
 
 /* User-defined code */
-static int validate_buffer(token_t *out, token_t *gold)
+/* static int validate_buffer(token_t *out, token_t *gold) */
+static int validate_buffer(token_t *out, double *gold)
 {
 	int i;
 	int j;
 	unsigned errors = 0;
-	float MSE = 0.0;
-	float MAE = 0.0;
-	float max_diff = 0.0;
+	double MSE = 0.0;
+	double MAE = 0.0;
+	double max_diff = 0.0;
 
 	for (i = 0; i < iter; i++)
 		for (j = 0; j < (x_dim + x_dim * x_dim)*chunks; j++)
 		{
 
-			token_t gold_val = gold[i * out_words_adj + j];
-			token_t acc_val = out[i * out_words_adj + j];
+			/* token_t gold_val = gold[i * out_words_adj + j]; */
+			double gold_val = gold[i * out_words_adj + j];
+			/* token_t acc_val = out[i * out_words_adj + j]; */
+			double acc_val = fixed64_to_double(out[i * out_words_adj + j], 32);
 
-			token_t diff;
+			double diff;
 			if(gold_val < acc_val)
 				diff = acc_val - gold_val;
 			else
@@ -49,7 +52,7 @@ static int validate_buffer(token_t *out, token_t *gold)
 			MSE += diff * diff;
 			MAE += diff;
 
-			token_t norm_diff = diff/acc_val > diff/gold_val ? diff/acc_val : diff/gold_val;
+			double norm_diff = diff/acc_val > diff/gold_val ? diff/acc_val : diff/gold_val;
 			if(norm_diff > max_diff)
 				max_diff = norm_diff;
 
@@ -82,7 +85,8 @@ static int validate_buffer(token_t *out, token_t *gold)
 
 
 /* User-defined code */
-static void init_buffer(token_t *in, token_t * gold)
+/* static void init_buffer(token_t *in, token_t * gold) */
+static void init_buffer(token_t *in, double * gold)
 {
 	int i;
 	int j;
@@ -102,37 +106,37 @@ static void init_buffer(token_t *in, token_t * gold)
 			//X
 			for(; j < x_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) initial[j];
+				in[i * in_words_adj + j] = (token_t) double_to_fixed64(initial[j], 32);
 			}
 
 			//P
 			for(; j < x_dim + x_dim * x_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) 0.0;
+				in[i * in_words_adj + j] = (token_t) double_to_fixed64(0.0, 32);
 			}
 
 			//F
 			for(; j < x_dim + x_dim * x_dim * 2; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) A[j - (x_dim + x_dim * x_dim)];
+				in[i * in_words_adj + j] = (token_t) double_to_fixed64(A[j - (x_dim + x_dim * x_dim)], 32);
 			}
 
 			//Q
 			for(; j < x_dim + x_dim * x_dim * 3; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) W[j - (x_dim + x_dim * x_dim * 2)];
+				in[i * in_words_adj + j] = (token_t) double_to_fixed64(W[j - (x_dim + x_dim * x_dim * 2)], 32);
 			}
 
 			//R
 			for(; j < x_dim + x_dim * x_dim * 3 + z_dim * z_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) Q[j - (x_dim + x_dim * x_dim * 3)];
+				in[i * in_words_adj + j] = (token_t) double_to_fixed64(Q[j - (x_dim + x_dim * x_dim * 3)], 32);
 			}
 
 			//H
 			for(; j < x_dim + x_dim * x_dim * 3 + z_dim * z_dim + z_dim * x_dim; j++)
 			{
-				in[i * in_words_adj + j] = (token_t) H[j - (x_dim + x_dim * x_dim * 3 + z_dim * z_dim)];
+				in[i * in_words_adj + j] = (token_t) double_to_fixed64(H[j - (x_dim + x_dim * x_dim * 3 + z_dim * z_dim)], 32);
 				//printf("Value of H = %f \n", measurements[NEURONS * (i+1) + j]);
 			}
 		}
@@ -144,15 +148,15 @@ static void init_buffer(token_t *in, token_t * gold)
 			for(; j < base_index + z_dim * chunks; j++)
 			{
 
-				in[j] = (token_t) measurements[NEURONS * (i+1) + j - base_index];
+				in[j] = (token_t) double_to_fixed64(measurements[NEURONS * (i+1) + j - base_index], 32);
 
 				/* in[in_words_adj + (i-1) * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i+1) + j]; */
 			}
 		else
 			for(; j < z_dim * chunks; j++)
 			{
-				in[in_words_adj + i * in_words_adj_z + j] = (token_t) measurements[NEURONS * (i * chunks + 1) + j];
-				//int32_t val = float_to_fixed32(measurements[NEURONS * i + j], 3);
+				in[in_words_adj + i * in_words_adj_z + j] = (token_t) double_to_fixed64(measurements[NEURONS * (i * chunks + 1) + j], 32);
+				//int32_t val = double_to_fixed32(measurements[NEURONS * i + j], 3);
 			// if(i == 3)
 			//printf("Value of Z = %d index %d \n", val, i * in_words_adj + j);
 			}
@@ -166,10 +170,10 @@ static void init_buffer(token_t *in, token_t * gold)
 		for(j = 0; j < x_dim + x_dim * x_dim; j++)
 		{
 			if(j < x_dim)
-				gold[i * out_words_adj/chunks + j] = (token_t) prediction[STATES * (i+1) + j];
+				gold[i * out_words_adj/chunks + j] = prediction[STATES * (i+1) + j];
 			else
 			{
-				gold[i * out_words_adj/chunks + j] = (token_t) P_flat[i * x_dim * x_dim + (j - x_dim)];
+				gold[i * out_words_adj/chunks + j] = P_flat[i * x_dim * x_dim + (j - x_dim)];
 			}
 		}
 }
@@ -200,7 +204,8 @@ int main(int argc, char **argv)
 {
 	int errors;
 
-	token_t *gold;
+	//token_t *gold;
+	double *gold;
 	token_t *buf;
 
 	if(argc < 7) {
@@ -234,6 +239,7 @@ int main(int argc, char **argv)
 	buf = (token_t *) esp_alloc(size);
 	cfg_000[0].hw_buf = buf;
 
+	//gold = malloc(out_size);
 	gold = malloc(out_size);
 
 	init_buffer(buf, gold);

@@ -191,9 +191,35 @@ int main(int argc, char **argv)
 {
 	int errors = 0;
 
-	printf("run c++ version of kalman filter...\n");
+	if(argc < 2) {
+		printf("run Eigen C++ version of kalman filter...\n");
 
-	run_kalman();
+		run_kalman();
+	}
+	else{
+		const char* str = argv[1];
+		int kalman = atoi(str);
+		if(kalman == 0){
+			printf("run Eigen C++ version of kalman filter...\n");
+
+			run_kalman();
+		}
+		else if(kalman == 1){
+			printf("run Eigen C++ version of kalman filter with Newton...\n");
+
+			run_kalman_newton();
+		}
+		else if(kalman == 2){
+			printf("run Eigen C++ version of kalman filter with manual Gauss...\n");
+
+			run_kalman_gauss();
+		}
+		else if(kalman == 3){
+			printf("run Eigen C++ version of kalman filter with all manual...\n");
+
+			run_kalman_manual();
+		}
+	}
 
 	/* token_t *gold; */
 	/* token_t *buf; */

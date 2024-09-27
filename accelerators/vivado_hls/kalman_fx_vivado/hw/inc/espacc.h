@@ -28,7 +28,7 @@
 
 // data word
 #if (IS_TYPE_FIXED_POINT ==  1)
-typedef ap_fixed<DATA_BITWIDTH,DATA_BITWIDTH-FRAC_BITS,AP_RND_INF,AP_SAT> word_t;
+typedef ap_fixed<DATA_BITWIDTH,DATA_BITWIDTH-FRAC_BITS> word_t;
 #elif (IS_TYPE_UINT == 1)
 typedef ap_uint<DATA_BITWIDTH> word_t;
 #elif (IS_TYPE_FLOAT == 1)

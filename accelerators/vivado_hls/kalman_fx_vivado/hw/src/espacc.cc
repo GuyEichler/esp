@@ -254,7 +254,8 @@ load_data:
 
 void store(// word_t X_pred[1][X_MAX],
            // word_t P_pred[X_MAX][X_MAX],
-           word_t _outbuff[SIZE_OUT_CHUNK_DATA],
+           comp_word_t _outbuff[SIZE_OUT_CHUNK_DATA],
+           // word_t _outbuff[SIZE_OUT_CHUNK_DATA],
            dma_word_t *out,
           /* <<--compute-params-->> */
            const unsigned chunks,
@@ -294,6 +295,9 @@ store_data:
 #pragma HLS loop_tripcount max=2100
 
     store_label1:for(unsigned j = 0; j < VALUES_PER_WORD; j++) {
+            // comp_word_t tmp;
+            // tmp = _outbuff[i * VALUES_PER_WORD + j];
+	    // out[dma_index + i].word[j] = tmp.to_float();
 	    out[dma_index + i].word[j] = _outbuff[i * VALUES_PER_WORD + j];
 
 // #ifndef __SYNTHESIS__
@@ -351,7 +355,8 @@ void compute(comp_word_t Z[CHUNK_MAX][Z_MAX],
              const unsigned z_dim,
              // word_t X_pred[1][X_MAX],
              // word_t P_pred[X_MAX][X_MAX],
-             word_t _outbuff[SIZE_OUT_CHUNK_DATA],
+             comp_word_t _outbuff[SIZE_OUT_CHUNK_DATA],
+             // word_t _outbuff[SIZE_OUT_CHUNK_DATA],
              // unsigned curr_chunk,
              unsigned curr_batch,
              bool &enable)
@@ -865,7 +870,8 @@ compute_data:
             else
                 tmp = X_pred_ping[0][i];
 
-            _outbuff[i + c * out_length] = tmp.to_float();
+            _outbuff[i + c * out_length] = tmp;
+            // _outbuff[i + c * out_length] = tmp.to_float();
 
 // #ifndef __SYNTHESIS__
 //             printf("compute outbuff[%d] = %f\n", i, _outbuff[i + curr_chunk * out_length]);
@@ -881,7 +887,9 @@ compute_data:
             else
                 tmp = P_pred_ping[row][col];
 
-            _outbuff[i + c * out_length] = tmp.to_float();
+            _outbuff[i + c * out_length] = tmp;
+            // _outbuff[i + c * out_length] = tmp.to_float()
+                ;
 
 #ifndef __SYNTHESIS__
             // printf("outbuff[%d] = %.12f , P_pred[%d][%d] = %.12f \n", i, _outbuff[i], row, col, P_pred[row][col]);
@@ -949,7 +957,7 @@ void top(dma_word_t *out, dma_word_t *in1,
          static comp_word_t R_kal[Z_MAX][Z_MAX];
          static comp_word_t H[Z_MAX][X_MAX];
 
-         static word_t _outbuff[SIZE_OUT_CHUNK_DATA];
+         static comp_word_t _outbuff[SIZE_OUT_CHUNK_DATA];
 
          // static comp_word_t X_pred[1][X_MAX];
          // static comp_word_t P_pred[X_MAX][X_MAX];

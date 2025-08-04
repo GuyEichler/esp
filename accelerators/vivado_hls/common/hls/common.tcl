@@ -102,6 +102,7 @@ foreach dma $dma_width {
 
 	# Export RTL
 	export_design -rtl verilog -format ip_catalog
+	# export_design -rtl verilog -format ip_catalog -flow syn
     }
 }
 
